@@ -1,0 +1,20 @@
+[package]
+name = "useless-box"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tonic = "0.11"
+tonic-reflection = "0.11.0"
+prost = "0.12"
+
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+
+async-stream = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+
+[build-dependencies]
+tonic-build = "0.11"
