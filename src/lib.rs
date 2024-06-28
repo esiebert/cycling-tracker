@@ -1,6 +1,5 @@
 pub mod actor;
 pub mod util;
-pub mod grpc;
 
 use actor::GRPCActor;
 
@@ -17,9 +16,7 @@ pub struct App {
 impl App {
     pub fn new(grpc_host_url: String) -> Self {
         let grpc = GRPCActor::new(grpc_host_url);
-        Self {
-            grpc: grpc,
-        }
+        Self { grpc: grpc }
     }
 
     /// Run all actors.

@@ -13,7 +13,6 @@ use crate::useless_box::{Feature, Point, Rectangle, RouteNote, RouteSummary, FIL
 
 use crate::util::data::populate;
 
-
 pub struct GRPCActor {
     grpc_host_url: String,
 }
@@ -32,7 +31,10 @@ impl GRPCActor {
             .unwrap();
 
         let route_svc = RouteGuideServer::with_interceptor(
-            RouteGuideService { features: populate() }, check_auth
+            RouteGuideService {
+                features: populate(),
+            },
+            check_auth,
         );
 
         let addr = self.grpc_host_url.parse().unwrap();
@@ -40,7 +42,6 @@ impl GRPCActor {
 
         Server::builder()
             .add_service(reflection_svc)
-            .add_service(auth_svc)
             .add_service(route_svc)
             .serve(addr)
             .await?;
@@ -48,7 +49,6 @@ impl GRPCActor {
         Ok(())
     }
 }
-
 
 fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
     let token: MetadataValue<_> = "Bearer secret-token".parse().unwrap();
@@ -58,7 +58,6 @@ fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
         _ => Err(Status::unauthenticated("Invalid auth token")),
     }
 }
-
 
 #[derive(Debug)]
 pub struct RouteGuideService {
