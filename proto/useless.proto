@@ -2,6 +2,19 @@ syntax = "proto3";
 
 package uselesspackage;
 
+service SessionAuth {
+  rpc Login(Credentials) returns (SessionToken) {}
+}
+
+message Credentials {
+  string username = 1;
+  string password = 2;
+}
+
+message SessionToken {
+  string token = 1;
+}
+
 // Interface exported by the server.
 service RouteGuide {
   // A simple RPC.

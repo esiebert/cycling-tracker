@@ -1,4 +1,5 @@
 pub mod actor;
+pub mod service;
 pub mod util;
 
 use actor::GRPCActor;
@@ -20,10 +21,10 @@ impl App {
     }
 
     /// Run all actors.
-    pub async fn run(self) -> Result<(), &'static str> {
+    pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
         tokio::select! {
-            _ = self.grpc.run() => {
-                Err("gRPC actor stopped unexpectedly")
+            e = self.grpc.run() => {
+                e
             }
         }
     }

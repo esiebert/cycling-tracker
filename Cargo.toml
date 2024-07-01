@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tonic = "0.11"
+tonic = { version = "0.11", features = ["tls"] }
 tonic-reflection = "0.11.0"
 prost = "0.12"
 
