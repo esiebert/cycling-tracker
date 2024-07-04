@@ -8,7 +8,7 @@ type GRPCResult<T> = Result<tonic::Response<T>, tonic::Status>;
 pub mod cycling_tracker {
     tonic::include_proto!("cyclingtracker");
 
-    pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("cyclingtracker.bin");
+    pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("fds/cyclingtracker.bin");
 }
 
 pub struct App {
