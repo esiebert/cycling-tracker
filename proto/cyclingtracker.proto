@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package cyclingtracker;
+
+// Service for providing session tokens
+service SessionAuth {
+  // Return a session token on successful login.
+  rpc Login(Credentials) returns (SessionToken) {}
+}
+
+message Credentials {
+  // Username
+  string username = 1;
+  // Password
+  string password = 2;
+}
+
+message SessionToken {
+  // Session token as a string.
+  string token = 1;
+}
+
+// Service for tracking cycling activities
+service CyclingTracker {
+  // Save an activity and return an activity summary.
+  //
+  // Summary includes measurement averages.
+  rpc SaveActivity(Activity) returns (ActivitySummary) {}
+
+  // Return detailed measurements of a certain activity. Measurements are streamed
+  // rather than returned at once, since there might be a lot of measurements.
+  rpc GetMeasurements(ActivityRequest) returns (stream Measurement) {}
+
+  // Records an ongoing activity and its measurements and returns an activity summary
+  // at the end of the activity.
+  rpc RecordActivity(stream Measurement) returns (ActivitySummary) {}
+
+  rpc CreateTrainingPlan(TrainingPlan) returns (TrainingPlanToken) {}
+
+  // Executes a training plan by adjusting resistance to fit a training plan
+  rpc ExecuteTrainingPlan(stream ActivityStep) returns (stream ControlStep) {}
+}
+
+message Activity {
+  int32 id = 1;
+  float km_ridden = 2;
+  repeated Measurement measurements = 3;
+}
+
+message Measurement {
+  float speed = 1;
+  int32 watts = 2;
+  int32 rpm = 3;
+  int32 resistance = 4;
+  int32 heartrate = 5;
+}
+
+message ActivitySummary {
+  int32 id = 1;
+  float km_ridden = 2;
+  float avg_speed = 3;
+  int32 avg_watts = 4;
+  int32 avg_rpm = 5;
+  int32 avg_heartrate = 6;
+  repeated Measurement measurements = 7;
+}
+
+message ActivityRequest {
+  int32 id = 1;
+}
+
+message TrainingPlan {
+  message Step {
+    int32 watts = 1;
+    int32 duration = 2;
+  }
+  repeated Step steps = 1;
+}
+
+message TrainingPlanToken {
+  int32 training_token = 1;
+}
+
+enum StepType {
+  STARTING = 0;
+  IN_PROGRESS = 1;
+  ENDING = 2;
+}
+
+message ActivityStep {
+  StepType type = 1;
+  optional TrainingPlanToken training_token = 2;
+  optional Measurement measurement = 3;
+}
+
+message ControlStep {
+  StepType type = 1;
+  optional float resistance = 2;
+  optional int32 activity_summary_id = 3;
+}

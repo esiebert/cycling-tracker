@@ -1,13 +1,14 @@
 pub mod actor;
 pub mod service;
-pub mod util;
 
 use actor::GRPCActor;
 
-pub mod useless_box {
-    tonic::include_proto!("uselesspackage");
+type GRPCResult<T> = Result<tonic::Response<T>, tonic::Status>;
 
-    pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("useless.bin");
+pub mod cycling_tracker {
+    tonic::include_proto!("cyclingtracker");
+
+    pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("cyclingtracker.bin");
 }
 
 pub struct App {

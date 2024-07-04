@@ -1,17 +1,18 @@
-use tonic_reflection;
+use tonic_reflection::server::Builder;
 
-use crate::useless_box::route_guide_server::RouteGuideServer;
-use crate::useless_box::session_auth_server::SessionAuthServer;
-use crate::useless_box::FILE_DESCRIPTOR_SET;
+use crate::cycling_tracker::cycling_tracker_server::CyclingTrackerServer;
+use crate::cycling_tracker::session_auth_server::SessionAuthServer;
+use crate::cycling_tracker::FILE_DESCRIPTOR_SET;
 use tonic::{
     metadata::MetadataValue,
     transport::{Identity, Server, ServerTlsConfig},
     Request, Status,
 };
 
-use crate::service::RouteGuideService;
+use crate::service::CyclingTrackerService;
 use crate::service::SessionAuthService;
-use crate::util::data::populate;
+
+use tracing::info;
 
 pub struct GRPCActor {
     grpc_host_url: String,
@@ -25,37 +26,41 @@ impl GRPCActor {
     }
 
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let data_dir = std::path::PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
-        let cert = std::fs::read_to_string(data_dir.join("server.pem"))?;
-        let key = std::fs::read_to_string(data_dir.join("server.key"))?;
-        let identity = Identity::from_pem(cert, key);
-
-        let reflection_svc = tonic_reflection::server::Builder::configure()
+        let reflection_svc = Builder::configure()
             .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
             .build()
             .unwrap();
 
-        let route_svc = RouteGuideServer::with_interceptor(
-            RouteGuideService {
-                features: populate(),
-            },
+        let ct_svc = CyclingTrackerServer::with_interceptor(
+            CyclingTrackerService {},
             check_session_token,
         );
+
         let auth_svc = SessionAuthServer::new(SessionAuthService {});
 
         let addr = self.grpc_host_url.parse().unwrap();
-        println!("RouteGuideServer listening on: {}", addr);
+        info!("CyclingTracker listening on: {}", addr);
 
         Server::builder()
-            .tls_config(ServerTlsConfig::new().identity(identity))?
+            .tls_config(config_tls()?)?
             .add_service(reflection_svc)
-            .add_service(route_svc)
+            .add_service(ct_svc)
             .add_service(auth_svc)
             .serve(addr)
             .await?;
 
         Ok(())
     }
+}
+
+fn config_tls() -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
+    let data_dir =
+        std::path::PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
+    let cert = std::fs::read_to_string(data_dir.join("server.pem"))
+        .map_err(|err| format!("Error reading public key file: {}", err))?;
+    let key = std::fs::read_to_string(data_dir.join("server.key"))
+        .map_err(|err| format!("Error reading private key file: {}", err))?;
+    Ok(ServerTlsConfig::new().identity(Identity::from_pem(cert, key)))
 }
 
 fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
