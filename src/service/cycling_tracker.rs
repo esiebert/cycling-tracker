@@ -1,7 +1,7 @@
 use crate::cycling_tracker::cycling_tracker_server::CyclingTracker;
 use crate::cycling_tracker::{
-    training_plan::Step, Activity, ActivityRequest, ActivityStep, ActivitySummary,
-    ControlStep, Measurement, StepType, TrainingPlan, TrainingPlanToken,
+    workout_plan::Step, Workout, WorkoutRequest, WorkoutStep, WorkoutSummary,
+    ControlStep, Measurement, StepType, WorkoutPlan, WorkoutPlanToken,
 };
 use crate::GRPCResult;
 use std::collections::VecDeque;
@@ -14,49 +14,49 @@ pub struct CyclingTrackerService {}
 
 #[tonic::async_trait]
 impl CyclingTracker for CyclingTrackerService {
-    async fn save_activity(
+    async fn save_workout(
         &self,
-        request: Request<Activity>,
-    ) -> GRPCResult<ActivitySummary> {
-        let activity = request.into_inner();
+        request: Request<Workout>,
+    ) -> GRPCResult<WorkoutSummary> {
+        let workout = request.into_inner();
 
-        let readings = activity.measurements.len();
+        let readings = workout.measurements.len();
 
         if readings == 0 {
-            return Ok(Response::new(ActivitySummary {
+            return Ok(Response::new(WorkoutSummary {
                 id: 1,
-                km_ridden: activity.km_ridden,
+                km_ridden: workout.km_ridden,
                 ..Default::default()
             }));
         }
 
-        let acc_measurements = activity
+        let acc_measurements = workout
             .measurements
             .clone()
             .into_iter()
             .reduce(|acc, e| acc + e)
             .unwrap();
 
-        let activity_summary = ActivitySummary {
+        let workout_summary = WorkoutSummary {
             id: 1,
-            km_ridden: activity.km_ridden,
+            km_ridden: workout.km_ridden,
             avg_speed: acc_measurements.speed / readings as f32,
             avg_watts: acc_measurements.watts / readings as i32,
             avg_rpm: acc_measurements.rpm / readings as i32,
             avg_heartrate: acc_measurements.heartrate / readings as i32,
-            measurements: activity.measurements,
+            measurements: workout.measurements,
         };
 
-        Ok(Response::new(activity_summary))
+        Ok(Response::new(workout_summary))
     }
 
     type GetMeasurementsStream = ReceiverStream<Result<Measurement, Status>>;
 
     async fn get_measurements(
         &self,
-        _request: Request<ActivityRequest>,
+        _request: Request<WorkoutRequest>,
     ) -> GRPCResult<Self::GetMeasurementsStream> {
-        let activity_summaries = vec![ActivitySummary {
+        let workout_summaries = vec![WorkoutSummary {
             id: 1,
             km_ridden: 10.0,
             avg_speed: 30.0,
@@ -90,7 +90,7 @@ impl CyclingTracker for CyclingTrackerService {
         let (tx, rx) = mpsc::channel(4);
 
         tokio::spawn(async move {
-            for measurement in activity_summaries
+            for measurement in workout_summaries
                 .get(0)
                 .unwrap()
                 .measurements
@@ -105,13 +105,13 @@ impl CyclingTracker for CyclingTrackerService {
         Ok(Response::new(ReceiverStream::new(rx)))
     }
 
-    async fn record_activity(
+    async fn record_workout(
         &self,
         request: Request<Streaming<Measurement>>,
-    ) -> GRPCResult<ActivitySummary> {
+    ) -> GRPCResult<WorkoutSummary> {
         let mut stream = request.into_inner();
 
-        let mut summary = ActivitySummary::default();
+        let mut summary = WorkoutSummary::default();
 
         let mut acc_measurements = Measurement::default();
 
@@ -133,31 +133,30 @@ impl CyclingTracker for CyclingTrackerService {
         Ok(Response::new(summary))
     }
 
-    async fn create_training_plan(
+    async fn create_workout_plan(
         &self,
-        _request: Request<TrainingPlan>,
-    ) -> GRPCResult<TrainingPlanToken> {
-        Ok(Response::new(TrainingPlanToken::default()))
+        _request: Request<WorkoutPlan>,
+    ) -> GRPCResult<WorkoutPlanToken> {
+        Ok(Response::new(WorkoutPlanToken::default()))
     }
 
-    type ExecuteTrainingPlanStream =
+    type RunWorkoutStream =
         Pin<Box<dyn Stream<Item = Result<ControlStep, Status>> + Send + 'static>>;
 
-    async fn execute_training_plan(
+    async fn run_workout(
         &self,
-        request: Request<Streaming<ActivityStep>>,
-    ) -> GRPCResult<Self::ExecuteTrainingPlanStream> {
-        info!("Starting training plan");
+        request: Request<Streaming<WorkoutStep>>,
+    ) -> GRPCResult<Self::RunWorkoutStream> {
         let mut stream = request.into_inner();
-
         let mut training_steps: VecDeque<Step> = VecDeque::from(vec![]);
 
         let output = async_stream::try_stream! {
-            while let Some(activity_step) = stream.next().await {
-                let stype = StepType::try_from(activity_step?.stype).unwrap();
+            while let Some(workout_step) = stream.next().await {
+                let stype = StepType::try_from(workout_step?.stype).unwrap();
                 match stype {
                     StepType::Starting => {
-                        let training_plan = TrainingPlan {
+                        info!("Starting workout");
+                        let training_plan = WorkoutPlan {
                             steps: vec![
                                 Step { watts: 150, duration: 2},
                                 Step { watts: 200, duration: 2},
@@ -167,18 +166,18 @@ impl CyclingTracker for CyclingTrackerService {
                         yield next_control_step(stype, &mut training_steps);
                     },
                     StepType::InProgress => {
+                        info!("Stepping over workout in progress");
                         yield next_control_step(stype, &mut training_steps);
                     },
                     StepType::Ending => {
+                        info!("Ending workout");
                         yield end_workout();
                     },
                 }
             }
         };
 
-        Ok(Response::new(
-            Box::pin(output) as Self::ExecuteTrainingPlanStream
-        ))
+        Ok(Response::new(Box::pin(output) as Self::RunWorkoutStream))
     }
 }
 
@@ -188,11 +187,12 @@ fn next_control_step(
 ) -> ControlStep {
     let step = training_steps.pop_front();
     let resistance = Some(step.unwrap_or_default().watts);
+    info!("Next resistance: {:?}", resistance);
 
     ControlStep {
         stype: stype.into(),
         resistance: resistance,
-        activity_summary_id: None,
+        workout_summary_id: None,
     }
 }
 
@@ -200,7 +200,7 @@ fn end_workout() -> ControlStep {
     ControlStep {
         stype: StepType::Ending.into(),
         resistance: None,
-        activity_summary_id: Some(1),
+        workout_summary_id: Some(1),
     }
 }
 

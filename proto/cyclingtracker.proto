@@ -22,29 +22,28 @@ message SessionToken {
 
 // Service for tracking cycling activities
 service CyclingTracker {
-  // Save an activity and return an activity summary.
+  // Save a workout and return an workout summary.
   //
   // Summary includes measurement averages.
-  rpc SaveActivity(Activity) returns (ActivitySummary) {}
+  rpc SaveWorkout(Workout) returns (WorkoutSummary) {}
 
-  // Return detailed measurements of a certain activity. Measurements are streamed
+  // Return detailed measurements of a certain workout. Measurements are streamed
   // rather than returned at once, since there might be a lot of measurements.
-  rpc GetMeasurements(ActivityRequest) returns (stream Measurement) {}
+  rpc GetMeasurements(WorkoutRequest) returns (stream Measurement) {}
 
-  // Records an ongoing activity and its measurements and returns an activity summary
-  // at the end of the activity.
-  rpc RecordActivity(stream Measurement) returns (ActivitySummary) {}
+  // Records an ongoing workout and its measurements and returns a workout summary
+  // at the end of the workout.
+  rpc RecordWorkout(stream Measurement) returns (WorkoutSummary) {}
 
-  rpc CreateTrainingPlan(TrainingPlan) returns (TrainingPlanToken) {}
+  rpc CreateWorkoutPlan(WorkoutPlan) returns (WorkoutPlanToken) {}
 
-  // Executes a training plan by adjusting resistance to fit a training plan
-  rpc ExecuteTrainingPlan(stream ActivityStep) returns (stream ControlStep) {}
+  // Runs a workout plan by adjusting the trainers resistance
+  rpc RunWorkout(stream WorkoutStep) returns (stream ControlStep) {}
 }
 
-message Activity {
-  int32 id = 1;
-  float km_ridden = 2;
-  repeated Measurement measurements = 3;
+message Workout {
+  float km_ridden = 1;
+  repeated Measurement measurements = 2;
 }
 
 message Measurement {
@@ -55,7 +54,7 @@ message Measurement {
   int32 heartrate = 5;
 }
 
-message ActivitySummary {
+message WorkoutSummary {
   int32 id = 1;
   float km_ridden = 2;
   float avg_speed = 3;
@@ -65,11 +64,11 @@ message ActivitySummary {
   repeated Measurement measurements = 7;
 }
 
-message ActivityRequest {
+message WorkoutRequest {
   int32 id = 1;
 }
 
-message TrainingPlan {
+message WorkoutPlan {
   message Step {
     int32 watts = 1;
     int32 duration = 2;
@@ -77,8 +76,8 @@ message TrainingPlan {
   repeated Step steps = 1;
 }
 
-message TrainingPlanToken {
-  int32 training_token = 1;
+message WorkoutPlanToken {
+  int32 workout_token = 1;
 }
 
 enum StepType {
@@ -87,14 +86,14 @@ enum StepType {
   ENDING = 2;
 }
 
-message ActivityStep {
+message WorkoutStep {
   StepType stype = 1;
-  optional TrainingPlanToken training_token = 2;
+  optional WorkoutPlanToken workout_token = 2;
   optional Measurement measurement = 3;
 }
 
 message ControlStep {
   StepType stype = 1;
   optional int32 resistance = 2;
-  optional int32 activity_summary_id = 3;
+  optional int32 workout_summary_id = 3;
 }
