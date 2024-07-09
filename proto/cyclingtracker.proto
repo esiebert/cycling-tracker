@@ -88,13 +88,13 @@ enum StepType {
 }
 
 message ActivityStep {
-  StepType type = 1;
+  StepType stype = 1;
   optional TrainingPlanToken training_token = 2;
   optional Measurement measurement = 3;
 }
 
 message ControlStep {
-  StepType type = 1;
-  optional float resistance = 2;
+  StepType stype = 1;
+  optional int32 resistance = 2;
   optional int32 activity_summary_id = 3;
 }
