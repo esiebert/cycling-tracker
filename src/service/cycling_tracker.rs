@@ -1,16 +1,27 @@
+use crate::actor::Message;
 use crate::cycling_tracker::cycling_tracker_server::CyclingTracker;
 use crate::cycling_tracker::{
-    workout_plan::Step, Workout, WorkoutRequest, WorkoutStep, WorkoutSummary,
-    ControlStep, Measurement, StepType, WorkoutPlan, WorkoutPlanToken,
+    workout_plan::Step, ControlStep, Measurement, StepType, Workout, WorkoutPlan,
+    WorkoutPlanToken, WorkoutRequest, WorkoutStep, WorkoutSummary,
 };
 use crate::GRPCResult;
 use std::collections::VecDeque;
 use std::pin::Pin;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{channel, Sender};
 use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
-pub struct CyclingTrackerService {}
+
+#[derive(Clone)]
+pub struct CyclingTrackerService {
+    sqlite: Sender<Message>,
+}
+
+impl CyclingTrackerService {
+    pub fn new(sqlite: Sender<Message>) -> Self {
+        Self { sqlite: sqlite }
+    }
+}
 
 #[tonic::async_trait]
 impl CyclingTracker for CyclingTrackerService {
@@ -46,6 +57,11 @@ impl CyclingTracker for CyclingTrackerService {
             avg_heartrate: acc_measurements.heartrate / readings as i32,
             measurements: workout.measurements,
         };
+
+        let _ = self
+            .sqlite
+            .send(Message::SaveWorkout("Workout saved".to_string()))
+            .await;
 
         Ok(Response::new(workout_summary))
     }
@@ -87,7 +103,7 @@ impl CyclingTracker for CyclingTrackerService {
                 },
             ],
         }];
-        let (tx, rx) = mpsc::channel(4);
+        let (tx, rx) = channel(32);
 
         tokio::spawn(async move {
             for measurement in workout_summaries

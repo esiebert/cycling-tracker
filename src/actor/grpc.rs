@@ -16,12 +16,17 @@ use tracing::info;
 
 pub struct GRPCActor {
     grpc_host_url: String,
+    cyclink_tracker_service: CyclingTrackerService,
 }
 
 impl GRPCActor {
-    pub fn new(grpc_host_url: String) -> Self {
+    pub fn new(
+        grpc_host_url: String,
+        cyclink_tracker_service: CyclingTrackerService,
+    ) -> Self {
         Self {
             grpc_host_url: grpc_host_url,
+            cyclink_tracker_service: cyclink_tracker_service,
         }
     }
 
@@ -32,7 +37,7 @@ impl GRPCActor {
             .unwrap();
 
         let ct_svc = CyclingTrackerServer::with_interceptor(
-            CyclingTrackerService {},
+            self.cyclink_tracker_service.clone(),
             check_session_token,
         );
 
@@ -69,5 +74,45 @@ fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
     match req.metadata().get("Authorization") {
         Some(t) if token == t => Ok(req),
         _ => Err(Status::unauthenticated("Invalid session token")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_check_session_token_valid() {
+        let mut req = Request::new(());
+        let token: MetadataValue<_> = "Bearer session-token".parse().unwrap();
+        req.metadata_mut().insert("Authorization", token);
+
+        let result = check_session_token(req);
+
+        assert!(result.is_ok());
+    }
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_check_session_token_invalid() {
+        let mut req = Request::new(());
+        let token: MetadataValue<_> = "Bearer invalid-token".parse().unwrap();
+        req.metadata_mut().insert("Authorization", token);
+
+        let result = check_session_token(req);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code(), tonic::Code::Unauthenticated);
+    }
+
+    #[tokio::test]
+    async fn test_check_session_token_no_token() {
+        let req = Request::new(());
+
+        let result = check_session_token(req);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code(), tonic::Code::Unauthenticated);
     }
 }

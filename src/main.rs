@@ -1,6 +1,6 @@
+use cycling_tracker::App;
 use tracing::{info, Level};
 use tracing_subscriber;
-use cycling_tracker::App;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
