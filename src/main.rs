@@ -4,7 +4,12 @@ use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    let format = tracing_subscriber::fmt::format().with_target(false);
+
+    tracing_subscriber::fmt()
+        .event_format(format)
+        .with_max_level(Level::INFO)
+        .init();
 
     info!("Starting gRPC server");
 

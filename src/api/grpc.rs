@@ -1,19 +1,20 @@
-use tonic::service::interceptor::InterceptedService;
-use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
-
 use crate::cycling_tracker::CyclingTrackerServer;
 use crate::cycling_tracker::SessionAuthServer;
+use crate::service::CyclingTrackerService;
+use crate::service::SessionAuthService;
+use anyhow::Result;
+use thiserror::Error;
+use tonic::service::interceptor::InterceptedService;
 use tonic::{
     metadata::MetadataValue,
     transport::{server::Router, Identity, Server, ServerTlsConfig},
     Request, Status,
 };
+use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 
-use crate::service::CyclingTrackerService;
-use crate::service::SessionAuthService;
+use tracing::{info, instrument};
 
-use tracing::info;
-
+#[derive(Debug)]
 pub struct GRPC {
     addr: String,
     // Wrap router with Option, because we will have to swap its content
@@ -26,8 +27,9 @@ impl GRPC {
         Builder::new()
     }
 
-    pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let addr = self.addr.parse().unwrap();
+    #[instrument(name = "gRPC::run", skip(self), err)]
+    pub async fn run(&mut self) -> Result<()> {
+        let addr: std::net::SocketAddr = self.addr.parse().unwrap();
         info!("CyclingTracker listening on: {}", addr);
 
         // Router doesn't implement clone, so we create an auxiliary variable,
@@ -43,16 +45,6 @@ impl GRPC {
     }
 }
 
-fn config_tls() -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
-    let data_dir =
-        std::path::PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
-    let cert = std::fs::read_to_string(data_dir.join("server.pem"))
-        .map_err(|err| format!("Error reading public key file: {}", err))?;
-    let key = std::fs::read_to_string(data_dir.join("server.key"))
-        .map_err(|err| format!("Error reading private key file: {}", err))?;
-    Ok(ServerTlsConfig::new().identity(Identity::from_pem(cert, key)))
-}
-
 fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
     let token: MetadataValue<_> = "Bearer session-token".parse().unwrap();
 
@@ -64,7 +56,7 @@ fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
 
 pub struct Builder {
     server: Server,
-    addr: Option<String>,
+    addr: Option<std::net::SocketAddr>,
     router: Option<Router>,
 }
 
@@ -77,14 +69,37 @@ impl Builder {
         }
     }
 
-    pub fn with_addr(mut self, addr: String) -> Self {
-        self.addr = Some(addr);
-        self
+    pub fn with_addr(mut self, addr: String) -> Result<Self, GRPCBuildError> {
+        let socket_addr = addr.parse().map_err(|err| {
+            GRPCBuildError::InvalidAddr(format!("Can't parse address: {}", err))
+        })?;
+        self.addr = Some(socket_addr);
+
+        Ok(self)
     }
 
-    pub fn with_tls(mut self) -> Self {
-        self.server = self.server.tls_config(config_tls().unwrap()).unwrap();
-        self
+    pub fn with_tls(mut self) -> Result<Self, GRPCBuildError> {
+        use std::fs::read_to_string;
+        use std::path::PathBuf;
+
+        let data_dir =
+            PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
+
+        let cert = read_to_string(data_dir.join("server.pem")).map_err(|err| {
+            GRPCBuildError::TLSSetupError(format!("Error reading public key: {}", err))
+        })?;
+
+        let key = read_to_string(data_dir.join("server.key")).map_err(|err| {
+            GRPCBuildError::TLSSetupError(format!("Error reading private key: {}", err))
+        })?;
+
+        let config_tls = ServerTlsConfig::new().identity(Identity::from_pem(cert, key));
+
+        self.server = self.server.tls_config(config_tls).map_err(|err| {
+            GRPCBuildError::TLSSetupError(format!("Error configuring TLS: {}", err))
+        })?;
+
+        Ok(self)
     }
 
     pub fn add_auth_service(
@@ -144,6 +159,14 @@ impl Builder {
             addr: addr.to_string(),
         }
     }
+}
+
+#[derive(Debug, Error)]
+pub enum GRPCBuildError {
+    #[error("Unable to setup TLS: {0}")]
+    TLSSetupError(String),
+    #[error("Invalid socket address: {0}")]
+    InvalidAddr(String),
 }
 
 #[cfg(test)]

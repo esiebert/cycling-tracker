@@ -1,9 +1,9 @@
 pub mod api;
 pub mod service;
+use anyhow::Result;
+use api::{grpc::Builder, SQLite, GRPC};
 use service::{CyclingTrackerService, SessionAuthService};
 use tonic_reflection::server::Builder as ReflectionServerBuilder;
-
-use api::{grpc::Builder, SQLite, GRPC};
 
 type GRPCResult<T> = Result<tonic::Response<T>, tonic::Status>;
 
@@ -33,11 +33,13 @@ impl App {
         let refl = ReflectionServerBuilder::configure()
             .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
             .build()
-            .unwrap();
+            .expect("Failed to setup reflection service");
 
         let grpc = Builder::new()
             .with_addr(grpc_host_url)
+            .expect("Failed to set address")
             .with_tls()
+            .expect("Failed when setting up TLS")
             .add_auth_service(auth)
             .add_reflection_service(refl)
             .add_ct_service(cts, false)
@@ -50,7 +52,7 @@ impl App {
     }
 
     /// Run all actors.
-    pub async fn run(mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(mut self) -> Result<()> {
         tokio::select! {
             e = self.grpc.run() => {
                 e
