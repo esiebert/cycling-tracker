@@ -21,7 +21,7 @@ impl SQLiteActor {
 
     pub async fn run(mut self) -> Result<(), Box<dyn std::error::Error>> {
         while let Some(i) = self.receiver.recv().await {
-            println!("got = {:?}", i);
+            println!("Saving log to database = {:?}", i);
         }
         Ok(())
     }
