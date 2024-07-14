@@ -1,8 +1,8 @@
 use tonic::service::interceptor::InterceptedService;
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 
-use crate::cycling_tracker::cycling_tracker_server::CyclingTrackerServer;
-use crate::cycling_tracker::session_auth_server::SessionAuthServer;
+use crate::cycling_tracker::CyclingTrackerServer;
+use crate::cycling_tracker::SessionAuthServer;
 use tonic::{
     metadata::MetadataValue,
     transport::{server::Router, Identity, Server, ServerTlsConfig},
@@ -106,7 +106,6 @@ impl Builder {
             Some(r) => self.router = Some(r.add_service(service)),
             None => self.router = Some(self.server.add_service(service)),
         }
-
         self
     }
 

@@ -1,6 +1,6 @@
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-pub struct SQLiteActor {
+pub struct SQLite {
     receiver: Receiver<Message>,
     handler: Sender<Message>,
 }
@@ -10,7 +10,7 @@ pub enum Message {
     SaveWorkout(String),
 }
 
-impl SQLiteActor {
+impl SQLite {
     pub fn new() -> Self {
         let (handler, receiver) = channel(32);
         Self {

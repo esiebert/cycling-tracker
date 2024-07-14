@@ -1,4 +1,4 @@
-use crate::actor::Message;
+use crate::api::Message;
 use crate::cycling_tracker::cycling_tracker_server::CyclingTracker;
 use crate::cycling_tracker::{
     workout_plan::Step, ControlStep, Measurement, StepType, Workout, WorkoutPlan,
