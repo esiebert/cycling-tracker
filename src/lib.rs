@@ -43,7 +43,8 @@ impl App {
             .add_auth_service(auth)
             .add_reflection_service(refl)
             .add_ct_service(cts, false)
-            .build();
+            .build()
+            .expect("Failed to build gRPC");
 
         Self {
             grpc: grpc,

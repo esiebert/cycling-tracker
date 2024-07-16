@@ -3,6 +3,7 @@ use crate::cycling_tracker::SessionAuthServer;
 use crate::service::CyclingTrackerService;
 use crate::service::SessionAuthService;
 use anyhow::Result;
+use std::net::SocketAddr;
 use thiserror::Error;
 use tonic::service::interceptor::InterceptedService;
 use tonic::{
@@ -11,12 +12,11 @@ use tonic::{
     Request, Status,
 };
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
-
 use tracing::{info, instrument};
 
 #[derive(Debug)]
 pub struct GRPC {
-    addr: String,
+    addr: SocketAddr,
     // Wrap router with Option, because we will have to swap its content
     // with another aux Option<Router>. See run().
     router: Option<Router>,
@@ -29,8 +29,7 @@ impl GRPC {
 
     #[instrument(name = "gRPC::run", skip(self), err)]
     pub async fn run(&mut self) -> Result<()> {
-        let addr: std::net::SocketAddr = self.addr.parse().unwrap();
-        info!("CyclingTracker listening on: {}", addr);
+        info!("CyclingTracker listening on: {}", self.addr);
 
         // Router doesn't implement clone, so we create an auxiliary variable,
         // swap its contents, and use it to create GRPC.
@@ -39,7 +38,7 @@ impl GRPC {
         let mut router: Option<Router> = None;
         std::mem::swap(&mut self.router, &mut router);
 
-        router.unwrap().serve(addr).await?;
+        router.unwrap().serve(self.addr).await?;
 
         Ok(())
     }
@@ -56,7 +55,7 @@ fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
 
 pub struct Builder {
     server: Server,
-    addr: Option<std::net::SocketAddr>,
+    addr: Option<SocketAddr>,
     router: Option<Router>,
 }
 
@@ -147,17 +146,17 @@ impl Builder {
         self
     }
 
-    pub fn build(&mut self) -> GRPC {
-        let addr = self.addr.as_ref().unwrap();
+    pub fn build(&mut self) -> Result<GRPC, GRPCBuildError> {
+        let addr = self.addr.ok_or(GRPCBuildError::AddrNotSet)?;
 
         // Router doesn't implement clone, so we create an auxiliary variable,
         // swap its contents, and use it to create GRPC
         let mut router: Option<Router> = None;
         std::mem::swap(&mut self.router, &mut router);
-        GRPC {
+        Ok(GRPC {
             router: router,
-            addr: addr.to_string(),
-        }
+            addr: addr,
+        })
     }
 }
 
@@ -167,6 +166,8 @@ pub enum GRPCBuildError {
     TLSSetupError(String),
     #[error("Invalid socket address: {0}")]
     InvalidAddr(String),
+    #[error("Socket address not set")]
+    AddrNotSet,
 }
 
 #[cfg(test)]
