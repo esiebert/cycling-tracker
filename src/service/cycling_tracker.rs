@@ -4,13 +4,14 @@ use crate::cycling_tracker::{
     workout_plan::Step, ControlStep, Measurement, StepType, Workout, WorkoutPlan,
     WorkoutPlanToken, WorkoutRequest, WorkoutStep, WorkoutSummary,
 };
-use crate::GRPCResult;
 use std::collections::VecDeque;
 use std::pin::Pin;
 use tokio::sync::mpsc::{channel, Sender};
 use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
+
+type GRPCResult<T> = Result<Response<T>, Status>;
 
 #[derive(Clone)]
 pub struct CyclingTrackerService {

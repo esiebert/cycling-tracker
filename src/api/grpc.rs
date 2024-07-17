@@ -68,16 +68,16 @@ impl Builder {
         }
     }
 
-    pub fn with_addr(mut self, addr: String) -> Result<Self, GRPCBuildError> {
+    pub fn with_addr(mut self, addr: String) -> Result<Self, BuildError> {
         let socket_addr = addr.parse().map_err(|err| {
-            GRPCBuildError::InvalidAddr(format!("Can't parse address: {}", err))
+            BuildError::InvalidAddr(format!("Can't parse address: {}", err))
         })?;
         self.addr = Some(socket_addr);
 
         Ok(self)
     }
 
-    pub fn with_tls(mut self) -> Result<Self, GRPCBuildError> {
+    pub fn with_tls(mut self) -> Result<Self, BuildError> {
         use std::fs::read_to_string;
         use std::path::PathBuf;
 
@@ -85,17 +85,17 @@ impl Builder {
             PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
 
         let cert = read_to_string(data_dir.join("server.pem")).map_err(|err| {
-            GRPCBuildError::TLSSetupError(format!("Error reading public key: {}", err))
+            BuildError::TLSSetupError(format!("Error reading public key: {}", err))
         })?;
 
         let key = read_to_string(data_dir.join("server.key")).map_err(|err| {
-            GRPCBuildError::TLSSetupError(format!("Error reading private key: {}", err))
+            BuildError::TLSSetupError(format!("Error reading private key: {}", err))
         })?;
 
         let config_tls = ServerTlsConfig::new().identity(Identity::from_pem(cert, key));
 
         self.server = self.server.tls_config(config_tls).map_err(|err| {
-            GRPCBuildError::TLSSetupError(format!("Error configuring TLS: {}", err))
+            BuildError::TLSSetupError(format!("Error configuring TLS: {}", err))
         })?;
 
         Ok(self)
@@ -146,13 +146,16 @@ impl Builder {
         self
     }
 
-    pub fn build(&mut self) -> Result<GRPC, GRPCBuildError> {
-        let addr = self.addr.ok_or(GRPCBuildError::AddrNotSet)?;
+    pub fn build(&mut self) -> Result<GRPC, BuildError> {
+        let addr = self.addr.ok_or(BuildError::AddrNotSet)?;
 
         // Router doesn't implement clone, so we create an auxiliary variable,
         // swap its contents, and use it to create GRPC
         let mut router: Option<Router> = None;
         std::mem::swap(&mut self.router, &mut router);
+
+        router.as_ref().ok_or(BuildError::RouterNotConfigured)?;
+
         Ok(GRPC {
             router: router,
             addr: addr,
@@ -161,13 +164,15 @@ impl Builder {
 }
 
 #[derive(Debug, Error)]
-pub enum GRPCBuildError {
+pub enum BuildError {
     #[error("Unable to setup TLS: {0}")]
     TLSSetupError(String),
     #[error("Invalid socket address: {0}")]
     InvalidAddr(String),
     #[error("Socket address not set")]
     AddrNotSet,
+    #[error("Router was not configured. Please add at least one service")]
+    RouterNotConfigured,
 }
 
 #[cfg(test)]
