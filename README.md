@@ -7,7 +7,10 @@ This system was built for learning purposes, it simulates a cycling workout trac
 
 ## Architecture
 
-The system has a gRPC API supporting basic authentication with session tokens over TLS, connected to a database, and implementing the actor design pattern.
+Currently, the system exposes a gRPC API supporting basic authentication with session tokens over TLS.
+
+Next steps:
+- Database connections for logging and persisting workout data
 
 ## Running the system
 
