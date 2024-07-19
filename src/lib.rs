@@ -25,7 +25,6 @@ impl App {
         Builder::new()
     }
 
-    /// Run all actors.
     pub async fn run(mut self) -> Result<()> {
         tokio::select! {
             e = self.grpc.run() => {
@@ -54,7 +53,9 @@ impl Builder {
     pub fn setup_grpc(mut self, host_url: String) -> Result<Self, BuildError> {
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
 
-        let sqlite = self.sqlite.as_ref().expect("auefiaef");
+        let sqlite = self.sqlite.as_ref().ok_or(BuildError::SQLiteNotSet(
+            "Failed building cycling tracker server",
+        ))?;
 
         let cts = cycling_tracker::CyclingTrackerServer::new(
             CyclingTrackerService::new(sqlite.handler()),
@@ -63,18 +64,15 @@ impl Builder {
         let refl = ReflectionServerBuilder::configure()
             .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
             .build()
-            .expect("Failed to setup reflection service");
+            .map_err(|e| BuildError::ReflectionBuildError(e.to_string()))?;
 
         let grpc = grpc::Builder::new()
-            .with_addr(host_url)
-            .expect("eafae")
-            .with_tls()
-            .expect("eafae")
+            .with_addr(host_url)?
+            .with_tls()?
             .add_auth_service(auth)
             .add_reflection_service(refl)
             .add_ct_service(cts, false)
-            .build()
-            .expect("eafae");
+            .build()?;
 
         self.grpc = Some(grpc);
         Ok(self)
@@ -85,14 +83,16 @@ impl Builder {
         self
     }
 
-    pub fn build(self) -> App {
-        let grpc = self.grpc.expect("Was supposed to be here");
-        let sqlite = self.sqlite.expect("Was supposed to be here");
+    pub fn build(self) -> Result<App, BuildError> {
+        let grpc = self.grpc.ok_or(BuildError::GRPCNotSet)?;
+        let sqlite = self
+            .sqlite
+            .ok_or(BuildError::SQLiteNotSet("Failed building app"))?;
 
-        App {
+        Ok(App {
             grpc: grpc,
             sqlite: sqlite,
-        }
+        })
     }
 }
 
@@ -100,4 +100,10 @@ impl Builder {
 pub enum BuildError {
     #[error("Failed to build gRPC: {0}")]
     GRPCBuildFailure(#[from] grpc::BuildError),
+    #[error("SQLite not set when it was needed: {0}")]
+    SQLiteNotSet(&'static str),
+    #[error("Failed to build reflection server: {0}")]
+    ReflectionBuildError(String),
+    #[error("gRPC service not set")]
+    GRPCNotSet,
 }
