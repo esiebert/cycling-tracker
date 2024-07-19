@@ -20,7 +20,7 @@ pub struct CyclingTrackerService {
 
 impl CyclingTrackerService {
     pub fn new(sqlite: Sender<Message>) -> Self {
-        Self { sqlite: sqlite }
+        Self { sqlite }
     }
 }
 
@@ -73,7 +73,7 @@ impl CyclingTracker for CyclingTrackerService {
         &self,
         _request: Request<WorkoutRequest>,
     ) -> GRPCResult<Self::GetMeasurementsStream> {
-        let workout_summaries = vec![WorkoutSummary {
+        let workout_summaries = [WorkoutSummary {
             id: 1,
             km_ridden: 10.0,
             avg_speed: 30.0,
@@ -108,7 +108,7 @@ impl CyclingTracker for CyclingTrackerService {
 
         tokio::spawn(async move {
             for measurement in workout_summaries
-                .get(0)
+                .first()
                 .unwrap()
                 .measurements
                 .clone()
@@ -208,7 +208,7 @@ fn next_control_step(
 
     ControlStep {
         stype: stype.into(),
-        resistance: resistance,
+        resistance,
         workout_summary_id: None,
     }
 }

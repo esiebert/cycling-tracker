@@ -84,10 +84,13 @@ impl Builder {
             .sqlite
             .ok_or(BuildError::SQLiteNotSet("Failed building app"))?;
 
-        Ok(App {
-            grpc: grpc,
-            sqlite: sqlite,
-        })
+        Ok(App { grpc, sqlite })
+    }
+}
+
+impl Default for Builder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

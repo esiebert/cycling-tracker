@@ -156,10 +156,13 @@ impl Builder {
 
         router.as_ref().ok_or(BuildError::RouterNotConfigured)?;
 
-        Ok(GRPC {
-            router: router,
-            addr: addr,
-        })
+        Ok(GRPC { router, addr })
+    }
+}
+
+impl Default for Builder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

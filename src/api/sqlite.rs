@@ -13,10 +13,7 @@ pub enum Message {
 impl SQLite {
     pub fn new() -> Self {
         let (handler, receiver) = channel(32);
-        Self {
-            receiver: receiver,
-            handler: handler,
-        }
+        Self { receiver, handler }
     }
 
     pub async fn run(mut self) -> Result<()> {
@@ -28,5 +25,11 @@ impl SQLite {
 
     pub fn handler(&self) -> Sender<Message> {
         self.handler.clone()
+    }
+}
+
+impl Default for SQLite {
+    fn default() -> Self {
+        Self::new()
     }
 }
