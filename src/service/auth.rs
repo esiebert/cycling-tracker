@@ -1,7 +1,8 @@
 use tonic::{Request, Response, Status};
 
-use crate::cycling_tracker::session_auth_server::SessionAuth;
-use crate::cycling_tracker::{Credentials, SessionToken};
+use crate::cycling_tracker::{
+    session_auth_server::SessionAuth, Credentials, SessionToken,
+};
 
 #[derive(Debug)]
 pub struct SessionAuthService {}

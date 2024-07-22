@@ -1,15 +1,17 @@
+use std::collections::VecDeque;
+use std::pin::Pin;
+
+use tokio::sync::mpsc::{channel, Sender};
+use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
+use tonic::{Request, Response, Status, Streaming};
+use tracing::info;
+
 use crate::api::Message;
 use crate::cycling_tracker::cycling_tracker_server::CyclingTracker;
 use crate::cycling_tracker::{
     workout_plan::Step, ControlStep, Measurement, StepType, Workout, WorkoutPlan,
     WorkoutPlanToken, WorkoutRequest, WorkoutStep, WorkoutSummary,
 };
-use std::collections::VecDeque;
-use std::pin::Pin;
-use tokio::sync::mpsc::{channel, Sender};
-use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
-use tonic::{Request, Response, Status, Streaming};
-use tracing::info;
 
 type GRPCResult<T> = Result<Response<T>, Status>;
 

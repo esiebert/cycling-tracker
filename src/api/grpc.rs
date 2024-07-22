@@ -1,18 +1,18 @@
-use crate::cycling_tracker::CyclingTrackerServer;
-use crate::cycling_tracker::SessionAuthServer;
-use crate::service::CyclingTrackerService;
-use crate::service::SessionAuthService;
-use anyhow::Result;
 use std::net::SocketAddr;
+
+use anyhow::Result;
 use thiserror::Error;
-use tonic::service::interceptor::InterceptedService;
 use tonic::{
     metadata::MetadataValue,
+    service::interceptor::InterceptedService,
     transport::{server::Router, Identity, Server, ServerTlsConfig},
     Request, Status,
 };
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 use tracing::{info, instrument};
+
+use crate::cycling_tracker::{CyclingTrackerServer, SessionAuthServer};
+use crate::service::{CyclingTrackerService, SessionAuthService};
 
 #[derive(Debug)]
 pub struct GRPC {
