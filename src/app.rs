@@ -7,6 +7,7 @@ use crate::api::{
     SQLite,
 };
 use crate::cycling_tracker;
+use crate::handler::WorkoutHandler;
 use crate::service::{CyclingTrackerService, SessionAuthService};
 use crate::FILE_DESCRIPTOR_SET;
 
@@ -53,7 +54,9 @@ impl Builder {
         ))?;
 
         let cts = cycling_tracker::CyclingTrackerServer::new(
-            CyclingTrackerService::new(sqlite.handler()),
+            CyclingTrackerService::new(WorkoutHandler {
+                sqlite_handler: sqlite.handler(),
+            }),
         );
 
         let refl = ReflectionServerBuilder::configure()

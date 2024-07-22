@@ -1,5 +1,6 @@
 pub mod api;
 pub mod app;
+pub mod handler;
 pub mod service;
 
 pub mod cycling_tracker {
