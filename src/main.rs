@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = App::builder()
         .setup_sqlite()
-        .setup_grpc(String::from("[::1]:10000"))?
+        .setup_grpc("[::1]:10000", true, true)?
         .build()?;
 
     app.run().await?;

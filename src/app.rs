@@ -1,5 +1,6 @@
 use anyhow::Result;
 use thiserror::Error;
+use tokio_stream::wrappers::TcpListenerStream;
 use tonic_reflection::server::Builder as ReflectionServerBuilder;
 
 use crate::api::{
@@ -31,6 +32,17 @@ impl App {
             }
         }
     }
+
+    pub async fn run_tcp(mut self, tcp_listener: TcpListenerStream) -> Result<()> {
+        tokio::select! {
+            e = self.grpc.run_tcp(tcp_listener) => {
+                e
+            }
+            e = self.sqlite.run() => {
+                e
+            }
+        }
+    }
 }
 
 pub struct Builder {
@@ -46,7 +58,12 @@ impl Builder {
         }
     }
 
-    pub fn setup_grpc(mut self, host_url: String) -> Result<Self, BuildError> {
+    pub fn setup_grpc(
+        mut self,
+        host_url: &str,
+        _with_tls: bool,
+        with_session_tokens: bool,
+    ) -> Result<Self, BuildError> {
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
 
         let sqlite = self.sqlite.as_ref().ok_or(BuildError::SQLiteNotSet(
@@ -66,10 +83,10 @@ impl Builder {
 
         let grpc = GRPCBuilder::new()
             .with_addr(host_url)?
-            .with_tls()?
+            //.with_tls()?
             .add_auth_service(auth)
             .add_reflection_service(refl)
-            .add_ct_service(cts, false)
+            .add_ct_service(cts, with_session_tokens)
             .build()?;
 
         self.grpc = Some(grpc);

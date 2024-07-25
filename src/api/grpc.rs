@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 use thiserror::Error;
+use tokio_stream::wrappers::TcpListenerStream;
 use tonic::{
     metadata::MetadataValue,
     service::interceptor::InterceptedService,
@@ -42,6 +43,22 @@ impl GRPC {
 
         Ok(())
     }
+
+    #[instrument(name = "gRPC::run", skip(self), err)]
+    pub async fn run_tcp(&mut self, tcp_listener: TcpListenerStream) -> Result<()> {
+        info!("CyclingTracker listening on TCP: {}", self.addr);
+
+        // Router doesn't implement clone, so we create an auxiliary variable,
+        // swap its contents, and use it to create GRPC.
+        // Aux is Option<Router> because there's no easy way to instantiate
+        // a Router
+        let mut router: Option<Router> = None;
+        std::mem::swap(&mut self.router, &mut router);
+
+        router.unwrap().serve_with_incoming(tcp_listener).await?;
+
+        Ok(())
+    }
 }
 
 fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
@@ -68,7 +85,7 @@ impl Builder {
         }
     }
 
-    pub fn with_addr(mut self, addr: String) -> Result<Self, BuildError> {
+    pub fn with_addr(mut self, addr: &str) -> Result<Self, BuildError> {
         let socket_addr = addr.parse().map_err(|err| {
             BuildError::InvalidAddr(format!("Can't parse address: {}", err))
         })?;
