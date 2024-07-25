@@ -101,11 +101,11 @@ impl Builder {
         let data_dir =
             PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
 
-        let cert = read_to_string(data_dir.join("server.pem")).map_err(|err| {
+        let cert = read_to_string(data_dir.join("example_public.pem")).map_err(|err| {
             BuildError::TLSSetupError(format!("Error reading public key: {}", err))
         })?;
 
-        let key = read_to_string(data_dir.join("server.key")).map_err(|err| {
+        let key = read_to_string(data_dir.join("example_private.key")).map_err(|err| {
             BuildError::TLSSetupError(format!("Error reading private key: {}", err))
         })?;
 
