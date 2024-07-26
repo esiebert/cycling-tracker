@@ -61,7 +61,7 @@ impl Builder {
     pub fn setup_grpc(
         mut self,
         host_url: &str,
-        _with_tls: bool,
+        with_tls: bool,
         with_session_tokens: bool,
     ) -> Result<Self, BuildError> {
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
@@ -81,9 +81,13 @@ impl Builder {
             .build()
             .map_err(|e| BuildError::ReflectionBuildError(e.to_string()))?;
 
-        let grpc = GRPCBuilder::new()
-            .with_addr(host_url)?
-            //.with_tls()?
+        let mut grpc_builder = GRPCBuilder::new().with_addr(host_url)?;
+
+        if with_tls {
+            grpc_builder = grpc_builder.with_tls()?;
+        }
+
+        let grpc = grpc_builder
             .add_auth_service(auth)
             .add_reflection_service(refl)
             .add_ct_service(cts, with_session_tokens)

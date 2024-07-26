@@ -25,24 +25,24 @@ impl SQLiteHandler {
         Some(vec![
             Measurement {
                 speed: 29.0,
-                watts: 300,
-                rpm: 95,
-                resistance: 700,
-                heartrate: 180,
+                watts: 290,
+                rpm: 90,
+                resistance: 690,
+                heartrate: 130,
             },
             Measurement {
                 speed: 30.0,
                 watts: 300,
                 rpm: 95,
                 resistance: 700,
-                heartrate: 180,
+                heartrate: 140,
             },
             Measurement {
                 speed: 31.0,
-                watts: 300,
-                rpm: 95,
-                resistance: 700,
-                heartrate: 180,
+                watts: 310,
+                rpm: 100,
+                resistance: 710,
+                heartrate: 150,
             },
         ])
     }

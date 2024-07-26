@@ -70,12 +70,14 @@ impl CyclingTracker for CyclingTrackerService {
     ) -> GRPCResult<WorkoutSummary> {
         let mut stream = request.into_inner();
 
-        let mut workout = Workout::default();
+        let mut workout = Workout {
+            km_ridden: 53.5,
+            ..Default::default()
+        };
 
         while let Some(measurement) = stream.next().await {
             info!("Measurement = {:?}", &measurement);
             workout.measurements.push(measurement?.clone());
-            workout.km_ridden += 1.5;
         }
         info!("Recording done");
 
@@ -108,13 +110,10 @@ impl CyclingTracker for CyclingTrackerService {
                 match stype {
                     StepType::Starting => {
                         info!("Starting workout");
-                        let training_plan = WorkoutPlan {
-                            steps: vec![
-                                Step { watts: 150, duration: 2},
-                                Step { watts: 200, duration: 2},
-                            ]
-                        };
-                        training_steps = VecDeque::from(training_plan.steps);
+                        training_steps = VecDeque::from(vec![
+                            Step { watts: 150, duration: 2},
+                            Step { watts: 200, duration: 2},
+                        ]);
                         yield next_control_step(stype, &mut training_steps);
                     },
                     StepType::InProgress => {

@@ -101,13 +101,15 @@ impl Builder {
         let data_dir =
             PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "data/tls"]);
 
-        let cert = read_to_string(data_dir.join("example_public.pem")).map_err(|err| {
-            BuildError::TLSSetupError(format!("Error reading public key: {}", err))
-        })?;
+        let cert =
+            read_to_string(data_dir.join("example_public.pem")).map_err(|err| {
+                BuildError::TLSSetupError(format!("Error reading public key: {}", err))
+            })?;
 
-        let key = read_to_string(data_dir.join("example_private.key")).map_err(|err| {
-            BuildError::TLSSetupError(format!("Error reading private key: {}", err))
-        })?;
+        let key =
+            read_to_string(data_dir.join("example_private.key")).map_err(|err| {
+                BuildError::TLSSetupError(format!("Error reading private key: {}", err))
+            })?;
 
         let config_tls = ServerTlsConfig::new().identity(Identity::from_pem(cert, key));
 
@@ -199,24 +201,22 @@ pub enum BuildError {
 mod tests {
     use super::*;
 
-    #[ignore]
     #[tokio::test]
     async fn test_check_session_token_valid() {
         let mut req = Request::new(());
         let token: MetadataValue<_> = "Bearer session-token".parse().unwrap();
-        req.metadata_mut().insert("Authorization", token);
+        req.metadata_mut().insert("authorization", token);
 
         let result = check_session_token(req);
 
         assert!(result.is_ok());
     }
 
-    #[ignore]
     #[tokio::test]
     async fn test_check_session_token_invalid() {
         let mut req = Request::new(());
         let token: MetadataValue<_> = "Bearer invalid-token".parse().unwrap();
-        req.metadata_mut().insert("Authorization", token);
+        req.metadata_mut().insert("authorization", token);
 
         let result = check_session_token(req);
 
