@@ -34,8 +34,7 @@ impl CyclingTracker for CyclingTrackerService {
     ) -> GRPCResult<WorkoutSummary> {
         let workout = request.into_inner();
 
-        let summary = self.workout_handler.create_summary(workout);
-        self.workout_handler.save_workout(&summary).await;
+        let summary = self.workout_handler.save_workout(&workout).await;
 
         Ok(Response::new(summary))
     }
@@ -81,17 +80,20 @@ impl CyclingTracker for CyclingTrackerService {
         }
         info!("Recording done");
 
-        let summary = self.workout_handler.create_summary(workout);
-        self.workout_handler.save_workout(&summary).await;
+        let summary = self.workout_handler.save_workout(&workout).await;
 
         Ok(Response::new(summary))
     }
 
     async fn create_workout_plan(
         &self,
-        _request: Request<WorkoutPlan>,
+        request: Request<WorkoutPlan>,
     ) -> GRPCResult<WorkoutPlanToken> {
-        Ok(Response::new(WorkoutPlanToken::default()))
+        let plan = request.into_inner();
+
+        let workout_token = self.workout_handler.save_plan(&plan).await;
+
+        Ok(Response::new(workout_token))
     }
 
     type RunWorkoutStream =

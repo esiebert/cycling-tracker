@@ -3,8 +3,11 @@ use thiserror::Error;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic_reflection::server::Builder as ReflectionServerBuilder;
 
-use crate::grpc::{BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC, cycling_tracker::CyclingTrackerService, auth::SessionAuthService};
 use crate::cycling_tracker;
+use crate::grpc::{
+    auth::SessionAuthService, cycling_tracker::CyclingTrackerService,
+    BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC,
+};
 use crate::handler::{SQLiteHandler, WorkoutHandler};
 use crate::FILE_DESCRIPTOR_SET;
 

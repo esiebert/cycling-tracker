@@ -1,11 +1,18 @@
-use crate::cycling_tracker::{Measurement, WorkoutSummary};
+use crate::cycling_tracker::{
+    Measurement, WorkoutPlan, WorkoutPlanToken, WorkoutSummary,
+};
 
 #[derive(Clone)]
 pub struct SQLiteHandler {}
 
 impl SQLiteHandler {
-    pub async fn save_workout(&self, workout_summary: &WorkoutSummary) {
-        println!("Saving to database = {:?}", workout_summary);
+    pub async fn save_workout(&self, summary: &WorkoutSummary) {
+        println!("Saving to database = {:?}", summary);
+    }
+
+    pub async fn save_plan(&self, plan: &WorkoutPlan) -> WorkoutPlanToken {
+        println!("Saving to database = {:?}", plan);
+        WorkoutPlanToken { workout_token: 1 }
     }
 
     pub async fn get_measurements(&self, _workout_id: i32) -> Option<Vec<Measurement>> {
