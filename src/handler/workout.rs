@@ -1,5 +1,5 @@
 use crate::cycling_tracker::{Measurement, Workout, WorkoutSummary};
-use crate::handler::database::{Message, SQLiteHandler};
+use crate::handler::database::SQLiteHandler;
 
 #[derive(Clone)]
 pub struct WorkoutHandler {
@@ -7,10 +7,8 @@ pub struct WorkoutHandler {
 }
 
 impl WorkoutHandler {
-    pub async fn save_workout(&self, _summary: &WorkoutSummary) {
-        self.sqlite_handler
-            .send(Message::SaveWorkout("Workout saved".to_string()))
-            .await;
+    pub async fn save_workout(&self, summary: &WorkoutSummary) {
+        self.sqlite_handler.save_workout(summary).await;
     }
 
     pub fn create_summary(&self, workout: Workout) -> WorkoutSummary {

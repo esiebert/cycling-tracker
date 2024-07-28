@@ -13,7 +13,12 @@ use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 use tracing::{info, instrument};
 
 use crate::cycling_tracker::{CyclingTrackerServer, SessionAuthServer};
-use crate::service::{CyclingTrackerService, SessionAuthService};
+
+pub mod auth;
+pub mod cycling_tracker;
+
+use auth::SessionAuthService;
+use cycling_tracker::CyclingTrackerService;
 
 #[derive(Debug)]
 pub struct GRPC {

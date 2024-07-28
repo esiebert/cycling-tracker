@@ -16,7 +16,6 @@ pub async fn run_test_env() -> TestEnvironment {
 
     // Build app
     let app = App::builder()
-        .setup_sqlite()
         // Disable TLS and session tokens for test purposes
         .setup_grpc(&addr, false, false)
         .expect("Failed to setup gRPC")

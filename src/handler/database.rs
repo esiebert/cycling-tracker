@@ -1,24 +1,11 @@
-use tokio::sync::mpsc::Sender;
-
-use crate::cycling_tracker::Measurement;
-
-#[derive(Debug)]
-pub enum Message {
-    SaveWorkout(String),
-}
+use crate::cycling_tracker::{Measurement, WorkoutSummary};
 
 #[derive(Clone)]
-pub struct SQLiteHandler {
-    pub sender: Sender<Message>,
-}
+pub struct SQLiteHandler {}
 
 impl SQLiteHandler {
-    pub async fn send(&self, message: Message) {
-        let _ = self.sender.send(message).await;
-    }
-
-    pub async fn handle_message(&self, message: Message) {
-        println!("Saving message to database = {:?}", message);
+    pub async fn save_workout(&self, workout_summary: &WorkoutSummary) {
+        println!("Saving to database = {:?}", workout_summary);
     }
 
     pub async fn get_measurements(&self, _workout_id: i32) -> Option<Vec<Measurement>> {

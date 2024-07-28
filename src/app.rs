@@ -3,18 +3,13 @@ use thiserror::Error;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic_reflection::server::Builder as ReflectionServerBuilder;
 
-use crate::api::{
-    grpc::{BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC},
-    SQLite,
-};
+use crate::grpc::{BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC, cycling_tracker::CyclingTrackerService, auth::SessionAuthService};
 use crate::cycling_tracker;
-use crate::handler::WorkoutHandler;
-use crate::service::{CyclingTrackerService, SessionAuthService};
+use crate::handler::{SQLiteHandler, WorkoutHandler};
 use crate::FILE_DESCRIPTOR_SET;
 
 pub struct App {
     grpc: GRPC,
-    sqlite: SQLite,
 }
 
 impl App {
@@ -27,9 +22,6 @@ impl App {
             e = self.grpc.run() => {
                 e
             }
-            e = self.sqlite.run() => {
-                e
-            }
         }
     }
 
@@ -38,24 +30,17 @@ impl App {
             e = self.grpc.run_tcp(tcp_listener) => {
                 e
             }
-            e = self.sqlite.run() => {
-                e
-            }
         }
     }
 }
 
 pub struct Builder {
     grpc: Option<GRPC>,
-    sqlite: Option<SQLite>,
 }
 
 impl Builder {
     pub fn new() -> Self {
-        Self {
-            grpc: None,
-            sqlite: None,
-        }
+        Self { grpc: None }
     }
 
     pub fn setup_grpc(
@@ -66,13 +51,9 @@ impl Builder {
     ) -> Result<Self, BuildError> {
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
 
-        let sqlite = self.sqlite.as_ref().ok_or(BuildError::SQLiteNotSet(
-            "Failed building cycling tracker server",
-        ))?;
-
         let cts = cycling_tracker::CyclingTrackerServer::new(
             CyclingTrackerService::new(WorkoutHandler {
-                sqlite_handler: sqlite.handler(),
+                sqlite_handler: SQLiteHandler {},
             }),
         );
 
@@ -97,18 +78,10 @@ impl Builder {
         Ok(self)
     }
 
-    pub fn setup_sqlite(mut self) -> Self {
-        self.sqlite = Some(SQLite::new());
-        self
-    }
-
     pub fn build(self) -> Result<App, BuildError> {
         let grpc = self.grpc.ok_or(BuildError::GRPCNotSet)?;
-        let sqlite = self
-            .sqlite
-            .ok_or(BuildError::SQLiteNotSet("Failed building app"))?;
 
-        Ok(App { grpc, sqlite })
+        Ok(App { grpc })
     }
 }
 
@@ -122,8 +95,6 @@ impl Default for Builder {
 pub enum BuildError {
     #[error("Failed to build gRPC: {0}")]
     GRPCBuildFailure(#[from] GRPCBuildError),
-    #[error("SQLite not set when it was needed: {0}")]
-    SQLiteNotSet(&'static str),
     #[error("Failed to build reflection server: {0}")]
     ReflectionBuildError(String),
     #[error("gRPC service not set")]

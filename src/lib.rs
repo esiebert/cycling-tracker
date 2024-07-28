@@ -1,7 +1,6 @@
-pub mod api;
 pub mod app;
+pub mod grpc;
 pub mod handler;
-pub mod service;
 
 pub mod cycling_tracker {
     tonic::include_proto!("cyclingtracker");

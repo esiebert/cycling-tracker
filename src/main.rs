@@ -13,7 +13,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting gRPC server");
 
     let app = App::builder()
-        .setup_sqlite()
         .setup_grpc("[::1]:10000", true, true)?
         .build()?;
 
