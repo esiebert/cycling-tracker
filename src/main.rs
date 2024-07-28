@@ -13,7 +13,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting gRPC server");
 
     let app = App::builder()
-        .setup_grpc("[::1]:10000", true, true)?
+        .setup_grpc("[::1]:10000", true, true)
+        .await?
         .build()?;
 
     app.run().await?;

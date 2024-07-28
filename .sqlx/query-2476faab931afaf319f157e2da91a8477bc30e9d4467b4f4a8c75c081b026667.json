@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO WORKOUT_SUMMARY VALUES (Null, $1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "2476faab931afaf319f157e2da91a8477bc30e9d4467b4f4a8c75c081b026667"
+}

@@ -8,7 +8,10 @@ use crate::grpc::{
     auth::SessionAuthService, cycling_tracker::CyclingTrackerService,
     BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC,
 };
-use crate::handler::{SQLiteHandler, WorkoutHandler};
+use crate::handler::{
+    database::{DatabaseError, SQLiteHandler},
+    WorkoutHandler,
+};
 use crate::FILE_DESCRIPTOR_SET;
 
 pub struct App {
@@ -46,7 +49,7 @@ impl Builder {
         Self { grpc: None }
     }
 
-    pub fn setup_grpc(
+    pub async fn setup_grpc(
         mut self,
         host_url: &str,
         with_tls: bool,
@@ -54,10 +57,12 @@ impl Builder {
     ) -> Result<Self, BuildError> {
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
 
+        let sqlite_handler = SQLiteHandler::new("sqlite:ct.db")
+            .await
+            .map_err(|e| BuildError::DatabaseFailure(e))?;
+
         let cts = cycling_tracker::CyclingTrackerServer::new(
-            CyclingTrackerService::new(WorkoutHandler {
-                sqlite_handler: SQLiteHandler {},
-            }),
+            CyclingTrackerService::new(WorkoutHandler { sqlite_handler }),
         );
 
         let refl = ReflectionServerBuilder::configure()
@@ -98,6 +103,8 @@ impl Default for Builder {
 pub enum BuildError {
     #[error("Failed to build gRPC: {0}")]
     GRPCBuildFailure(#[from] GRPCBuildError),
+    #[error("Failed to setup SQLite: {0}")]
+    DatabaseFailure(#[from] DatabaseError),
     #[error("Failed to build reflection server: {0}")]
     ReflectionBuildError(String),
     #[error("gRPC service not set")]

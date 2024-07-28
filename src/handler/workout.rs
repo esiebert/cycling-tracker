@@ -10,8 +10,10 @@ pub struct WorkoutHandler {
 
 impl WorkoutHandler {
     pub async fn save_workout(&self, workout: &Workout) -> WorkoutSummary {
-        let summary = self.create_summary(workout);
-        self.sqlite_handler.save_workout(&summary).await;
+        let mut summary = self.create_summary(workout);
+        let summary_id = self.sqlite_handler.save_workout(&summary).await;
+        summary.id = summary_id;
+
         summary
     }
 
@@ -24,7 +26,7 @@ impl WorkoutHandler {
 
         if readings == 0 {
             return WorkoutSummary {
-                id: 1,
+                id: 0,
                 km_ridden: 0.0,
                 ..Default::default()
             };
@@ -38,7 +40,7 @@ impl WorkoutHandler {
             .unwrap();
 
         WorkoutSummary {
-            id: 1,
+            id: 0,
             km_ridden: workout.km_ridden,
             avg_speed: acc_measurements.speed / readings as f32,
             avg_watts: acc_measurements.watts / readings as i32,

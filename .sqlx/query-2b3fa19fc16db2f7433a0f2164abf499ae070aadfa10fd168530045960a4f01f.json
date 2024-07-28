@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM MEASUREMENTS WHERE workout_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "speed",
+        "ordinal": 0,
+        "type_info": "Float"
+      },
+      {
+        "name": "watts",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rpm",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "resistance",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "heartrate",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "workout_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2b3fa19fc16db2f7433a0f2164abf499ae070aadfa10fd168530045960a4f01f"
+}
