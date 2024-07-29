@@ -19,18 +19,13 @@
         "type_info": "Integer"
       },
       {
-        "name": "resistance",
+        "name": "heartrate",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "heartrate",
-        "ordinal": 4,
-        "type_info": "Integer"
-      },
-      {
         "name": "workout_id",
-        "ordinal": 5,
+        "ordinal": 4,
         "type_info": "Integer"
       }
     ],
@@ -38,7 +33,6 @@
       "Right": 1
     },
     "nullable": [
-      false,
       false,
       false,
       false,

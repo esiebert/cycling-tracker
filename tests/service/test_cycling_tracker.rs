@@ -4,8 +4,7 @@ use tonic::Request;
 
 use crate::common::{run_test_env, stream_to_vec, vec_to_stream};
 use cycling_tracker::cycling_tracker::{
-    ControlStep, Measurement, StepType, Workout, WorkoutPlan, WorkoutPlanToken,
-    WorkoutRequest, WorkoutStep, WorkoutSummary,
+    Measurement, Workout, WorkoutRequest, WorkoutSummary,
 };
 
 lazy_static! {
@@ -14,26 +13,23 @@ lazy_static! {
             speed: 29.0,
             watts: 290,
             rpm: 90,
-            resistance: 690,
             heartrate: 130,
         },
         Measurement {
             speed: 30.0,
             watts: 300,
             rpm: 95,
-            resistance: 700,
             heartrate: 140,
         },
         Measurement {
             speed: 31.0,
             watts: 310,
             rpm: 100,
-            resistance: 710,
             heartrate: 150,
         },
     ];
     static ref WORKOUT_SUMMARY: WorkoutSummary = WorkoutSummary {
-        id: 1,
+        id: Some(0),
         km_ridden: 53.5,
         avg_speed: 30.0,
         avg_watts: 300,
@@ -96,67 +92,85 @@ async fn test_record_workout() {
 }
 
 #[tokio::test]
-async fn test_run_workout() {
+async fn test_get_current_averages() {
     let mut test_env = run_test_env().await;
 
-    let request = vec_to_stream(vec![
-        WorkoutStep {
-            stype: StepType::Starting.into(),
-            ..Default::default()
-        },
-        WorkoutStep {
-            stype: StepType::InProgress.into(),
-            ..Default::default()
-        },
-        WorkoutStep {
-            stype: StepType::Ending.into(),
-            ..Default::default()
-        },
-    ]);
+    let request = vec_to_stream((*MEASUREMENTS).clone());
 
     let response_stream = test_env
         .grpc_client
-        .run_workout(request)
+        .get_current_averages(request)
         .await
-        .expect("Failed to run workout")
+        .expect("Failed to get current averages")
         .into_inner();
 
     let expected_response = vec![
-        ControlStep {
-            stype: StepType::Starting.into(),
-            resistance: Some(150),
-            workout_summary_id: None,
+        WorkoutSummary {
+            id: None,
+            km_ridden: 29.0,
+            avg_speed: 29.0,
+            avg_watts: 290,
+            avg_rpm: 90,
+            avg_heartrate: 130,
+            measurements: vec![Measurement {
+                speed: 29.0,
+                watts: 290,
+                rpm: 90,
+                heartrate: 130,
+            }],
         },
-        ControlStep {
-            stype: StepType::InProgress.into(),
-            resistance: Some(200),
-            workout_summary_id: None,
+        WorkoutSummary {
+            id: None,
+            km_ridden: 59.0,
+            avg_speed: 29.5,
+            avg_watts: 295,
+            avg_rpm: 92,
+            avg_heartrate: 135,
+            measurements: vec![
+                Measurement {
+                    speed: 29.0,
+                    watts: 290,
+                    rpm: 90,
+                    heartrate: 130,
+                },
+                Measurement {
+                    speed: 30.0,
+                    watts: 300,
+                    rpm: 95,
+                    heartrate: 140,
+                },
+            ],
         },
-        ControlStep {
-            stype: StepType::Ending.into(),
-            resistance: None,
-            workout_summary_id: Some(1),
+        WorkoutSummary {
+            id: None,
+            km_ridden: 90.0,
+            avg_speed: 30.0,
+            avg_watts: 300,
+            avg_rpm: 95,
+            avg_heartrate: 140,
+            measurements: vec![
+                Measurement {
+                    speed: 29.0,
+                    watts: 290,
+                    rpm: 90,
+                    heartrate: 130,
+                },
+                Measurement {
+                    speed: 30.0,
+                    watts: 300,
+                    rpm: 95,
+                    heartrate: 140,
+                },
+                Measurement {
+                    speed: 31.0,
+                    watts: 310,
+                    rpm: 100,
+                    heartrate: 150,
+                },
+            ],
         },
     ];
 
     let actual_response = stream_to_vec(response_stream).await;
     assert_eq!(actual_response, expected_response);
-}
-
-#[tokio::test]
-async fn test_create_workout_plan() {
-    let mut test_env = run_test_env().await;
-
-    let request = Request::new(WorkoutPlan { steps: vec![] });
-
-    let actual_response = test_env
-        .grpc_client
-        .create_workout_plan(request)
-        .await
-        .expect("Failed to create workout plan")
-        .into_inner();
-
-    let expect_response = WorkoutPlanToken { workout_token: 0 };
-
-    assert_eq!(actual_response, expect_response);
 }

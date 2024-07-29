@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO MEASUREMENTS VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "0c4365a794f24b5b9535dabc3582c4777b9b9ebdc299c54a5308ae96c9c6d25b"
+}

@@ -35,10 +35,8 @@ service CyclingTracker {
   // at the end of the workout.
   rpc RecordWorkout(stream Measurement) returns (WorkoutSummary) {}
 
-  rpc CreateWorkoutPlan(WorkoutPlan) returns (WorkoutPlanToken) {}
-
-  // Runs a workout plan by adjusting the trainers resistance
-  rpc RunWorkout(stream WorkoutStep) returns (stream ControlStep) {}
+  // Runs a workout and returns updated averages
+  rpc GetCurrentAverages(stream Measurement) returns (stream WorkoutSummary) {}
 }
 
 message Workout {
@@ -47,15 +45,15 @@ message Workout {
 }
 
 message Measurement {
+  reserved 4;
   float speed = 1;
   int32 watts = 2;
   int32 rpm = 3;
-  int32 resistance = 4;
   int32 heartrate = 5;
 }
 
 message WorkoutSummary {
-  int32 id = 1;
+  optional int32 id = 1;
   float km_ridden = 2;
   float avg_speed = 3;
   int32 avg_watts = 4;
@@ -66,34 +64,4 @@ message WorkoutSummary {
 
 message WorkoutRequest {
   int32 id = 1;
-}
-
-message WorkoutPlan {
-  message Step {
-    int32 watts = 1;
-    int32 duration = 2;
-  }
-  repeated Step steps = 1;
-}
-
-message WorkoutPlanToken {
-  int32 workout_token = 1;
-}
-
-enum StepType {
-  STARTING = 0;
-  IN_PROGRESS = 1;
-  ENDING = 2;
-}
-
-message WorkoutStep {
-  StepType stype = 1;
-  optional WorkoutPlanToken workout_token = 2;
-  optional Measurement measurement = 3;
-}
-
-message ControlStep {
-  StepType stype = 1;
-  optional int32 resistance = 2;
-  optional int32 workout_summary_id = 3;
 }

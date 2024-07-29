@@ -1,6 +1,4 @@
-use crate::cycling_tracker::{
-    Measurement, Workout, WorkoutPlan, WorkoutPlanToken, WorkoutSummary,
-};
+use crate::cycling_tracker::{Measurement, Workout, WorkoutSummary};
 use crate::handler::database::SQLiteHandler;
 
 #[derive(Clone)]
@@ -12,21 +10,16 @@ impl WorkoutHandler {
     pub async fn save_workout(&self, workout: &Workout) -> WorkoutSummary {
         let mut summary = self.create_summary(workout);
         let summary_id = self.sqlite_handler.save_workout(&summary).await;
-        summary.id = summary_id;
+        summary.id = Some(summary_id);
 
         summary
     }
 
-    pub async fn save_plan(&self, plan: &WorkoutPlan) -> WorkoutPlanToken {
-        self.sqlite_handler.save_plan(plan).await
-    }
-
-    fn create_summary(&self, workout: &Workout) -> WorkoutSummary {
+    pub fn create_summary(&self, workout: &Workout) -> WorkoutSummary {
         let readings = workout.measurements.len();
 
         if readings == 0 {
             return WorkoutSummary {
-                id: 0,
                 km_ridden: 0.0,
                 ..Default::default()
             };
@@ -40,7 +33,7 @@ impl WorkoutHandler {
             .unwrap();
 
         WorkoutSummary {
-            id: 0,
+            id: None,
             km_ridden: workout.km_ridden,
             avg_speed: acc_measurements.speed / readings as f32,
             avg_watts: acc_measurements.watts / readings as i32,

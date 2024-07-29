@@ -1,9 +1,7 @@
 use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
 use thiserror::Error;
 
-use crate::cycling_tracker::{
-    Measurement, WorkoutPlan, WorkoutPlanToken, WorkoutSummary,
-};
+use crate::cycling_tracker::{Measurement, WorkoutSummary};
 
 #[derive(Clone)]
 pub struct SQLiteHandler {
@@ -44,11 +42,10 @@ impl SQLiteHandler {
 
         for measurement in summary.measurements.clone() {
             let _ = sqlx::query!(
-                "INSERT INTO MEASUREMENTS VALUES ($1, $2, $3, $4, $5, $6)",
+                "INSERT INTO MEASUREMENTS VALUES ($1, $2, $3, $4, $5)",
                 measurement.speed,
                 measurement.watts,
                 measurement.rpm,
-                measurement.resistance,
                 measurement.heartrate,
                 summary_id,
             )
@@ -59,11 +56,6 @@ impl SQLiteHandler {
         println!("Saved summary to database");
 
         summary_id as i32
-    }
-
-    pub async fn save_plan(&self, plan: &WorkoutPlan) -> WorkoutPlanToken {
-        println!("Saving to database = {:?}", plan);
-        WorkoutPlanToken { workout_token: 1 }
     }
 
     pub async fn get_measurements(&self, workout_id: i32) -> Option<Vec<Measurement>> {
@@ -83,7 +75,6 @@ impl SQLiteHandler {
                 speed: r.speed as f32,
                 watts: r.watts as i32,
                 rpm: r.rpm as i32,
-                resistance: r.resistance as i32,
                 heartrate: r.heartrate as i32,
             })
             .collect();
