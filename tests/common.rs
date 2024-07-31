@@ -1,5 +1,6 @@
 use std::{pin::Pin, vec::IntoIter};
 
+use sqlx::SqlitePool;
 use tokio::{net::TcpListener, task::spawn};
 use tokio_stream::{wrappers::TcpListenerStream, Iter, StreamExt};
 use tonic::{transport::channel::Channel, Request};
@@ -11,12 +12,13 @@ pub struct TestEnvironment {
     pub grpc_client: CyclingTrackerClient<Channel>,
 }
 
-pub async fn run_test_env() -> TestEnvironment {
+pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
     let addr = "127.0.0.1:0";
 
     // Build app
     let app = App::builder()
         // Disable TLS and session tokens for test purposes
+        .with_db(db)
         .setup_grpc(&addr, false, false)
         .await
         .expect("Failed to setup gRPC")

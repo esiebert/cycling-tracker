@@ -1,31 +1,14 @@
-use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
+use sqlx::SqlitePool;
 use thiserror::Error;
 
 use crate::cycling_tracker::{Measurement, WorkoutSummary};
 
 #[derive(Clone)]
 pub struct SQLiteHandler {
-    db: SqlitePool,
+    pub db: SqlitePool,
 }
 
 impl SQLiteHandler {
-    pub async fn new(db_url: &str) -> Result<Self, DatabaseError> {
-        Sqlite::create_database(db_url)
-            .await
-            .map_err(|e| DatabaseError::CreationFailed(format!("{e:?}")))?;
-
-        let db = SqlitePool::connect(db_url)
-            .await
-            .map_err(|e| DatabaseError::ConnectionFailed(format!("{e:?}")))?;
-
-        sqlx::migrate!()
-            .run(&db)
-            .await
-            .map_err(|e| DatabaseError::MigrationFailed(format!("{e:?}")))?;
-
-        Ok(Self { db })
-    }
-
     pub async fn save_workout(&self, summary: &WorkoutSummary) -> i32 {
         let result = sqlx::query!(
             "INSERT INTO WORKOUT_SUMMARY VALUES (Null, $1, $2, $3, $4, $5)",

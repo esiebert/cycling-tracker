@@ -1,5 +1,5 @@
 use crate::cycling_tracker::{Measurement, Workout, WorkoutSummary};
-use crate::handler::database::SQLiteHandler;
+use crate::handler::SQLiteHandler;
 
 #[derive(Clone)]
 pub struct WorkoutHandler {

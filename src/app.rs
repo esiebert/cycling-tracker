@@ -1,4 +1,5 @@
 use anyhow::Result;
+use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
 use thiserror::Error;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic_reflection::server::Builder as ReflectionServerBuilder;
@@ -8,10 +9,7 @@ use crate::grpc::{
     auth::SessionAuthService, cycling_tracker::CyclingTrackerService,
     BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC,
 };
-use crate::handler::{
-    database::{DatabaseError, SQLiteHandler},
-    WorkoutHandler,
-};
+use crate::handler::{SQLiteHandler, WorkoutHandler};
 use crate::FILE_DESCRIPTOR_SET;
 
 pub struct App {
@@ -42,11 +40,39 @@ impl App {
 
 pub struct Builder {
     grpc: Option<GRPC>,
+    db: Option<SqlitePool>,
 }
 
 impl Builder {
-    pub fn new() -> Self {
-        Self { grpc: None }
+    fn new() -> Self {
+        Self {
+            grpc: None,
+            db: None,
+        }
+    }
+
+    pub async fn setup_database(mut self, db_url: &str) -> Result<Self, BuildError> {
+        Sqlite::create_database(db_url)
+            .await
+            .map_err(|e| BuildError::DbCreationFailed(format!("{e:?}")))?;
+
+        let db = SqlitePool::connect(db_url)
+            .await
+            .map_err(|e| BuildError::DbConnectionFailed(format!("{e:?}")))?;
+
+        sqlx::migrate!()
+            .run(&db)
+            .await
+            .map_err(|e| BuildError::DbMigrationFailed(format!("{e:?}")))?;
+
+        self.db = Some(db);
+
+        Ok(self)
+    }
+
+    pub fn with_db(mut self, db: SqlitePool) -> Self {
+        self.db = Some(db);
+        self
     }
 
     pub async fn setup_grpc(
@@ -55,11 +81,10 @@ impl Builder {
         with_tls: bool,
         with_session_tokens: bool,
     ) -> Result<Self, BuildError> {
-        let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
-
-        let sqlite_handler = SQLiteHandler::new("sqlite:ct.db")
-            .await
-            .map_err(|e| BuildError::DatabaseFailure(e))?;
+        self.db.as_ref().ok_or(BuildError::DatabaseNotSet)?;
+        let sqlite_handler = SQLiteHandler {
+            db: self.db.clone().unwrap(),
+        };
 
         let cts = cycling_tracker::CyclingTrackerServer::new(
             CyclingTrackerService::new(WorkoutHandler { sqlite_handler }),
@@ -76,6 +101,7 @@ impl Builder {
             grpc_builder = grpc_builder.with_tls()?;
         }
 
+        let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
         let grpc = grpc_builder
             .add_auth_service(auth)
             .add_reflection_service(refl)
@@ -101,10 +127,16 @@ impl Default for Builder {
 
 #[derive(Debug, Error)]
 pub enum BuildError {
+    #[error("Database not set: required to setup gRPC")]
+    DatabaseNotSet,
+    #[error("Failed to create database: {0}")]
+    DbCreationFailed(String),
+    #[error("Failed to connect to database: {0}")]
+    DbConnectionFailed(String),
+    #[error("Failed to migrate database: {0}")]
+    DbMigrationFailed(String),
     #[error("Failed to build gRPC: {0}")]
     GRPCBuildFailure(#[from] GRPCBuildError),
-    #[error("Failed to setup SQLite: {0}")]
-    DatabaseFailure(#[from] DatabaseError),
     #[error("Failed to build reflection server: {0}")]
     ReflectionBuildError(String),
     #[error("gRPC service not set")]

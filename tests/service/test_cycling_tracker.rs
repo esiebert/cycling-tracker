@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use pretty_assertions::assert_eq;
+use sqlx::SqlitePool;
 use tonic::Request;
 
 use crate::common::{run_test_env, stream_to_vec, vec_to_stream};
@@ -29,7 +30,7 @@ lazy_static! {
         },
     ];
     static ref WORKOUT_SUMMARY: WorkoutSummary = WorkoutSummary {
-        id: Some(0),
+        id: Some(1),
         km_ridden: 53.5,
         avg_speed: 30.0,
         avg_watts: 300,
@@ -39,45 +40,40 @@ lazy_static! {
     };
 }
 
-#[tokio::test]
-async fn test_save_workout() {
-    let mut test_env = run_test_env().await;
+#[sqlx::test]
+async fn test_save_workout_and_get_measurements(db: SqlitePool) {
+    let mut test_env = run_test_env(db).await;
 
-    let request = Request::new(Workout {
+    let save_request = Request::new(Workout {
         km_ridden: 53.5,
         measurements: (*MEASUREMENTS).clone(),
     });
 
     let actual_response = test_env
         .grpc_client
-        .save_workout(request)
+        .save_workout(save_request)
         .await
         .expect("Failed to save workout")
         .into_inner();
 
     assert_eq!(actual_response, *WORKOUT_SUMMARY);
-}
 
-#[tokio::test]
-async fn test_get_measurements() {
-    let mut test_env = run_test_env().await;
-
-    let request = Request::new(WorkoutRequest { id: 1 });
+    let get_request = Request::new(WorkoutRequest { id: 1 });
 
     let response_stream = test_env
         .grpc_client
-        .get_measurements(request)
+        .get_measurements(get_request)
         .await
         .expect("Failed to get measurements")
         .into_inner();
 
-    let actual_response = stream_to_vec(response_stream).await;
-    assert_eq!(actual_response, (*MEASUREMENTS).clone());
+    let actual_response_stream = stream_to_vec(response_stream).await;
+    assert_eq!(actual_response_stream, (*MEASUREMENTS).clone());
 }
 
-#[tokio::test]
-async fn test_record_workout() {
-    let mut test_env = run_test_env().await;
+#[sqlx::test]
+async fn test_record_workout(db: SqlitePool) {
+    let mut test_env = run_test_env(db).await;
 
     let request = vec_to_stream((*MEASUREMENTS).clone());
 
@@ -91,9 +87,9 @@ async fn test_record_workout() {
     assert_eq!(actual_response, *WORKOUT_SUMMARY);
 }
 
-#[tokio::test]
-async fn test_get_current_averages() {
-    let mut test_env = run_test_env().await;
+#[sqlx::test]
+async fn test_get_current_averages(db: SqlitePool) {
+    let mut test_env = run_test_env(db).await;
 
     let request = vec_to_stream((*MEASUREMENTS).clone());
 
