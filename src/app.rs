@@ -9,7 +9,7 @@ use crate::grpc::{
     auth::SessionAuthService, cycling_tracker::CyclingTrackerService,
     BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC,
 };
-use crate::handler::{SQLiteHandler, WorkoutHandler};
+use crate::handler::{SQLiteHandler, UserHandler, WorkoutHandler};
 use crate::FILE_DESCRIPTOR_SET;
 
 pub struct App {
@@ -87,7 +87,9 @@ impl Builder {
         };
 
         let cts = cycling_tracker::CyclingTrackerServer::new(
-            CyclingTrackerService::new(WorkoutHandler { sqlite_handler }),
+            CyclingTrackerService::new(WorkoutHandler {
+                sqlite_handler: sqlite_handler.clone(),
+            }),
         );
 
         let refl = ReflectionServerBuilder::configure()
@@ -101,7 +103,9 @@ impl Builder {
             grpc_builder = grpc_builder.with_tls()?;
         }
 
-        let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService {});
+        let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService::new(
+            UserHandler { sqlite_handler },
+        ));
         let grpc = grpc_builder
             .add_auth_service(auth)
             .add_reflection_service(refl)

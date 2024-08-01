@@ -9,6 +9,29 @@ pub struct SQLiteHandler {
 }
 
 impl SQLiteHandler {
+    pub async fn create_user(&self, username: String, password: String) -> bool {
+        match sqlx::query!("INSERT INTO USER VALUES ($1, $2)", username, password)
+            .execute(&self.db)
+            .await
+        {
+            Ok(_) => true,
+            Err(e) => {
+                println!("Failed to create user: {:?}", e);
+                false
+            }
+        }
+    }
+
+    pub async fn get_hashed_password(&self, username: String) -> Option<String> {
+        match sqlx::query!("SELECT password FROM USER WHERE username = $1", username)
+            .fetch_one(&self.db)
+            .await
+        {
+            Ok(record) => Some(record.password),
+            Err(_) => None,
+        }
+    }
+
     pub async fn save_workout(&self, summary: &WorkoutSummary) -> i32 {
         let result = sqlx::query!(
             "INSERT INTO WORKOUT_SUMMARY VALUES (Null, $1, $2, $3, $4, $5)",

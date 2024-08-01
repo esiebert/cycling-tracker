@@ -6,6 +6,9 @@ package cyclingtracker;
 service SessionAuth {
   // Return a session token on successful login.
   rpc Login(Credentials) returns (SessionToken) {}
+
+  // Sign up a new user
+  rpc SignUp(Credentials) returns (SignUpResult) {}
 }
 
 message Credentials {
@@ -13,6 +16,10 @@ message Credentials {
   string username = 1;
   // Password
   string password = 2;
+}
+
+message SignUpResult {
+  bool result = 1;
 }
 
 message SessionToken {
