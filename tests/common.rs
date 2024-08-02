@@ -6,10 +6,12 @@ use tokio_stream::{wrappers::TcpListenerStream, Iter, StreamExt};
 use tonic::{transport::channel::Channel, Request};
 
 use cycling_tracker::cycling_tracker::cycling_tracker_client::CyclingTrackerClient;
+use cycling_tracker::cycling_tracker::session_auth_client::SessionAuthClient;
 use cycling_tracker::App;
 
 pub struct TestEnvironment {
-    pub grpc_client: CyclingTrackerClient<Channel>,
+    pub ct_service: CyclingTrackerClient<Channel>,
+    pub auth_service: SessionAuthClient<Channel>,
 }
 
 pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
@@ -32,12 +34,20 @@ pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
     // Run app
     spawn(app.run_tcp(TcpListenerStream::new(listener)));
 
-    // Get gRPC client
-    let grpc_client = CyclingTrackerClient::connect(format!("http://{}", addr))
+    // Get CT service client
+    let ct_service = CyclingTrackerClient::connect(format!("http://{}", addr))
         .await
         .expect("Failed to connect to gRPC CT Server");
 
-    TestEnvironment { grpc_client }
+    // Get auth service client
+    let auth_service = SessionAuthClient::connect(format!("http://{}", addr))
+        .await
+        .expect("Failed to connect to gRPC CT Server");
+
+    TestEnvironment {
+        ct_service,
+        auth_service,
+    }
 }
 
 pub async fn stream_to_vec<T>(mut stream: tonic::Streaming<T>) -> Vec<T> {

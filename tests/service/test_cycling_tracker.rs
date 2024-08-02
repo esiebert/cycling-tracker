@@ -50,7 +50,7 @@ async fn test_save_workout_and_get_measurements(db: SqlitePool) {
     });
 
     let actual_response = test_env
-        .grpc_client
+        .ct_service
         .save_workout(save_request)
         .await
         .expect("Failed to save workout")
@@ -61,7 +61,7 @@ async fn test_save_workout_and_get_measurements(db: SqlitePool) {
     let get_request = Request::new(WorkoutRequest { id: 1 });
 
     let response_stream = test_env
-        .grpc_client
+        .ct_service
         .get_measurements(get_request)
         .await
         .expect("Failed to get measurements")
@@ -78,7 +78,7 @@ async fn test_record_workout(db: SqlitePool) {
     let request = vec_to_stream((*MEASUREMENTS).clone());
 
     let actual_response = test_env
-        .grpc_client
+        .ct_service
         .record_workout(request)
         .await
         .expect("Failed to record workout")
@@ -94,7 +94,7 @@ async fn test_get_current_averages(db: SqlitePool) {
     let request = vec_to_stream((*MEASUREMENTS).clone());
 
     let response_stream = test_env
-        .grpc_client
+        .ct_service
         .get_current_averages(request)
         .await
         .expect("Failed to get current averages")
