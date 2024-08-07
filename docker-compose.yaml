@@ -1,0 +1,30 @@
+services:
+  cts:
+    # postgres version should match with the aurora version in AWS.
+    image: cts:latest
+    container_name: cts
+    ports:
+      - "10000:10000"
+    env_file:
+      - .env
+    networks:
+      - cts-network
+    depends_on:
+      cts-redis:
+        condition: service_healthy
+
+  cts-redis:
+    image: redis:7.4.0-alpine
+    container_name: cts-redis
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+    networks:
+      - cts-network
+
+networks:
+  cts-network:
