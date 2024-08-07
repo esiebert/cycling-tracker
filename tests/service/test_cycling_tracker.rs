@@ -3,7 +3,7 @@ use pretty_assertions::assert_eq;
 use sqlx::SqlitePool;
 use tonic::Request;
 
-use crate::common::{run_test_env, stream_to_vec, vec_to_stream};
+use crate::common::{run_test_env, stream_to_vec, vec_to_stream, with_metadata};
 use cycling_tracker::cycling_tracker::{
     Measurement, Workout, WorkoutRequest, WorkoutSummary,
 };
@@ -44,10 +44,10 @@ lazy_static! {
 async fn test_save_workout_and_get_measurements(db: SqlitePool) {
     let mut test_env = run_test_env(db).await;
 
-    let save_request = Request::new(Workout {
+    let save_request = with_metadata(Request::new(Workout {
         km_ridden: 53.5,
         measurements: (*MEASUREMENTS).clone(),
-    });
+    }));
 
     let actual_response = test_env
         .ct_service
@@ -58,7 +58,7 @@ async fn test_save_workout_and_get_measurements(db: SqlitePool) {
 
     assert_eq!(actual_response, *WORKOUT_SUMMARY);
 
-    let get_request = Request::new(WorkoutRequest { id: 1 });
+    let get_request = with_metadata(Request::new(WorkoutRequest { id: 1 }));
 
     let response_stream = test_env
         .ct_service

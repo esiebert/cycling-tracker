@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use tonic::{Code, Request};
 
 use crate::common::run_test_env;
-use cycling_tracker::cycling_tracker::{Credentials, SessionToken, SignUpResult};
+use cycling_tracker::cycling_tracker::{Credentials, SignUpResult};
 
 lazy_static! {
     static ref CREDENTIALS: Credentials = Credentials {
@@ -26,19 +26,11 @@ async fn test_new_user_login(db: SqlitePool) {
 
     assert_eq!(response, SignUpResult { result: true });
 
-    let response = test_env
+    test_env
         .auth_service
         .login(Request::new((*CREDENTIALS).clone()))
         .await
-        .expect("Failed to login")
-        .into_inner();
-
-    assert_eq!(
-        response,
-        SessionToken {
-            token: "session-token".to_string()
-        },
-    );
+        .expect("Failed to login");
 }
 
 #[sqlx::test]
