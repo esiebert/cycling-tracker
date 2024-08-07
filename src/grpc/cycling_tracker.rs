@@ -7,18 +7,25 @@ use tracing::info;
 
 use crate::cycling_tracker::cycling_tracker_server::CyclingTracker;
 use crate::cycling_tracker::{Measurement, Workout, WorkoutRequest, WorkoutSummary};
-use crate::handler::WorkoutHandler;
+use crate::handler::{SessionHandler, WorkoutHandler};
 
 type GRPCResult<T> = Result<Response<T>, Status>;
 
 #[derive(Clone)]
 pub struct CyclingTrackerService {
     workout_handler: WorkoutHandler,
+    session_handler: SessionHandler,
 }
 
 impl CyclingTrackerService {
-    pub fn new(workout_handler: WorkoutHandler) -> Self {
-        Self { workout_handler }
+    pub fn new(
+        workout_handler: WorkoutHandler,
+        session_handler: SessionHandler,
+    ) -> Self {
+        Self {
+            workout_handler,
+            session_handler,
+        }
     }
 }
 
@@ -28,6 +35,8 @@ impl CyclingTracker for CyclingTrackerService {
         &self,
         request: Request<Workout>,
     ) -> GRPCResult<WorkoutSummary> {
+        self.session_handler.verify_session_token(&request)?;
+
         let workout = request.into_inner();
 
         let summary = self.workout_handler.save_workout(&workout).await;
@@ -41,6 +50,8 @@ impl CyclingTracker for CyclingTrackerService {
         &self,
         request: Request<WorkoutRequest>,
     ) -> GRPCResult<Self::GetMeasurementsStream> {
+        self.session_handler.verify_session_token(&request)?;
+
         let workout_id = request.into_inner().id;
         let measurements: Vec<Measurement> = self
             .workout_handler
@@ -63,6 +74,8 @@ impl CyclingTracker for CyclingTrackerService {
         &self,
         request: Request<Streaming<Measurement>>,
     ) -> GRPCResult<WorkoutSummary> {
+        self.session_handler.verify_session_token(&request)?;
+
         let mut stream = request.into_inner();
 
         let mut workout = Workout {
@@ -88,6 +101,8 @@ impl CyclingTracker for CyclingTrackerService {
         &self,
         request: Request<Streaming<Measurement>>,
     ) -> GRPCResult<Self::GetCurrentAveragesStream> {
+        self.session_handler.verify_session_token(&request)?;
+
         let mut stream = request.into_inner();
 
         let mut workout = Workout::default();

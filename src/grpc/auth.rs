@@ -3,15 +3,19 @@ use tonic::{Request, Response, Status};
 use crate::cycling_tracker::{
     session_auth_server::SessionAuth, Credentials, SessionToken, SignUpResult,
 };
-use crate::handler::UserHandler;
+use crate::handler::{SessionHandler, UserHandler};
 
 pub struct SessionAuthService {
     pub user_handler: UserHandler,
+    pub session_handler: SessionHandler,
 }
 
 impl SessionAuthService {
-    pub fn new(user_handler: UserHandler) -> Self {
-        Self { user_handler }
+    pub fn new(user_handler: UserHandler, session_handler: SessionHandler) -> Self {
+        Self {
+            user_handler,
+            session_handler,
+        }
     }
 }
 
@@ -38,9 +42,10 @@ impl SessionAuth for SessionAuthService {
         let credentials = request.into_inner();
         println!("Login request from user = {:?}", credentials.username);
 
-        if self.user_handler.login(credentials).await {
+        if self.user_handler.login(credentials.clone()).await {
+            let session_token = self.session_handler.start(credentials.username);
             return Ok(Response::new(SessionToken {
-                token: "session-token".to_string(),
+                token: session_token,
             }));
         }
 

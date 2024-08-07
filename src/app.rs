@@ -9,7 +9,9 @@ use crate::grpc::{
     auth::SessionAuthService, cycling_tracker::CyclingTrackerService,
     BuildError as GRPCBuildError, Builder as GRPCBuilder, GRPC,
 };
-use crate::handler::{SQLiteHandler, UserHandler, WorkoutHandler};
+use crate::handler::{
+    RedisHandler, SQLiteHandler, SessionHandler, UserHandler, WorkoutHandler,
+};
 use crate::FILE_DESCRIPTOR_SET;
 
 pub struct App {
@@ -41,6 +43,7 @@ impl App {
 pub struct Builder {
     grpc: Option<GRPC>,
     db: Option<SqlitePool>,
+    redis: Option<redis::Client>,
 }
 
 impl Builder {
@@ -48,6 +51,7 @@ impl Builder {
         Self {
             grpc: None,
             db: None,
+            redis: None,
         }
     }
 
@@ -75,22 +79,49 @@ impl Builder {
         self
     }
 
+    pub fn setup_redis(mut self, redis_url: &str) -> Result<Self, BuildError> {
+        let client = redis::Client::open(redis_url)
+            .map_err(|e| BuildError::RedisFailed(format!("{e:?}")))?;
+
+        // Test if a connection can be opened
+        let _ = client
+            .get_connection()
+            .map_err(|e| BuildError::RedisFailed(format!("{e:?}")))?;
+
+        self.redis = Some(client);
+
+        Ok(self)
+    }
+
+    pub fn with_redis(mut self, redis: redis::Client) -> Self {
+        self.redis = Some(redis);
+        self
+    }
+
     pub async fn setup_grpc(
         mut self,
         host_url: &str,
         with_tls: bool,
-        with_session_tokens: bool,
     ) -> Result<Self, BuildError> {
         self.db.as_ref().ok_or(BuildError::DatabaseNotSet)?;
         let sqlite_handler = SQLiteHandler {
             db: self.db.clone().unwrap(),
         };
 
-        let cts = cycling_tracker::CyclingTrackerServer::new(
-            CyclingTrackerService::new(WorkoutHandler {
-                sqlite_handler: sqlite_handler.clone(),
-            }),
-        );
+        self.redis.as_ref().ok_or(BuildError::RedisNotSet)?;
+        let redis_handler = RedisHandler {
+            client: self.redis.clone().unwrap(),
+        };
+
+        let cts =
+            cycling_tracker::CyclingTrackerServer::new(CyclingTrackerService::new(
+                WorkoutHandler {
+                    sqlite_handler: sqlite_handler.clone(),
+                },
+                SessionHandler {
+                    redis_handler: redis_handler.clone(),
+                },
+            ));
 
         let refl = ReflectionServerBuilder::configure()
             .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
@@ -105,11 +136,12 @@ impl Builder {
 
         let auth = cycling_tracker::SessionAuthServer::new(SessionAuthService::new(
             UserHandler { sqlite_handler },
+            SessionHandler { redis_handler },
         ));
         let grpc = grpc_builder
             .add_auth_service(auth)
             .add_reflection_service(refl)
-            .add_ct_service(cts, with_session_tokens)
+            .add_ct_service(cts)
             .build()?;
 
         self.grpc = Some(grpc);
@@ -131,6 +163,10 @@ impl Default for Builder {
 
 #[derive(Debug, Error)]
 pub enum BuildError {
+    #[error("Redis not set: required to setup gRPC")]
+    RedisNotSet,
+    #[error("Failed to connect to redis: {0}")]
+    RedisFailed(String),
     #[error("Database not set: required to setup gRPC")]
     DatabaseNotSet,
     #[error("Failed to create database: {0}")]

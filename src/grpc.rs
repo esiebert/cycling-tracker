@@ -3,12 +3,7 @@ use std::net::SocketAddr;
 use anyhow::Result;
 use thiserror::Error;
 use tokio_stream::wrappers::TcpListenerStream;
-use tonic::{
-    metadata::MetadataValue,
-    service::interceptor::InterceptedService,
-    transport::{server::Router, Identity, Server, ServerTlsConfig},
-    Request, Status,
-};
+use tonic::transport::{server::Router, Identity, Server, ServerTlsConfig};
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 use tracing::{info, instrument};
 
@@ -63,15 +58,6 @@ impl GRPC {
         router.unwrap().serve_with_incoming(tcp_listener).await?;
 
         Ok(())
-    }
-}
-
-fn check_session_token(req: Request<()>) -> Result<Request<()>, Status> {
-    let token: MetadataValue<_> = "Bearer session-token".parse().unwrap();
-
-    match req.metadata().get("Authorization") {
-        Some(t) if token == t => Ok(req),
-        _ => Err(Status::unauthenticated("Invalid session token")),
     }
 }
 
@@ -150,22 +136,10 @@ impl Builder {
     pub fn add_ct_service(
         mut self,
         service: CyclingTrackerServer<CyclingTrackerService>,
-        intercept_session_token: bool,
     ) -> Self {
-        if intercept_session_token {
-            let intercepted_service =
-                InterceptedService::new(service.clone(), check_session_token);
-            match self.router {
-                Some(r) => self.router = Some(r.add_service(intercepted_service)),
-                None => {
-                    self.router = Some(self.server.add_service(intercepted_service))
-                }
-            }
-        } else {
-            match self.router {
-                Some(r) => self.router = Some(r.add_service(service)),
-                None => self.router = Some(self.server.add_service(service)),
-            }
+        match self.router {
+            Some(r) => self.router = Some(r.add_service(service)),
+            None => self.router = Some(self.server.add_service(service)),
         }
         self
     }
@@ -200,42 +174,4 @@ pub enum BuildError {
     AddrNotSet,
     #[error("Router was not configured. Please add at least one service")]
     RouterNotConfigured,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_check_session_token_valid() {
-        let mut req = Request::new(());
-        let token: MetadataValue<_> = "Bearer session-token".parse().unwrap();
-        req.metadata_mut().insert("authorization", token);
-
-        let result = check_session_token(req);
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_check_session_token_invalid() {
-        let mut req = Request::new(());
-        let token: MetadataValue<_> = "Bearer invalid-token".parse().unwrap();
-        req.metadata_mut().insert("authorization", token);
-
-        let result = check_session_token(req);
-
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().code(), tonic::Code::Unauthenticated);
-    }
-
-    #[tokio::test]
-    async fn test_check_session_token_no_token() {
-        let req = Request::new(());
-
-        let result = check_session_token(req);
-
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().code(), tonic::Code::Unauthenticated);
-    }
 }
