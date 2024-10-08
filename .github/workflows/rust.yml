@@ -22,6 +22,12 @@ jobs:
       uses: taiki-e/install-action@v2
       with:
         tool: protoc@${{ env.PROTOC_VERSION }}
+    - name: Install SQLx CLI
+      run: cargo install --version=0.8.0 sqlx-cli --no-default-features --features sqlite
+    - name: Prepare database
+      run: |
+        sqlx database create
+        sqlx migrate run
     - name: Build
       run: cargo build --verbose
     - name: Run tests
