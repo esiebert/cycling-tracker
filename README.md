@@ -12,12 +12,18 @@ This system was built for learning purposes, it covers four kinds of service met
 
 ## Running the system
 
-1. Given that Rust is installed locally, and dependencies have been installed, run:
+1. Setup development environment with:
+```
+make setup-env-linux
+# Or
+make setup-env-macos
+```
+2. Given that dependencies have been installed, run:
 ```
 make run
 ```
 
-2. Run your favorite gRPC tool to make requests to the API. I recommend using [grpcui](https://github.com/fullstorydev/grpcui) and running it with:
+3. Run your favorite gRPC tool to make requests to the API. I recommend using [grpcui](https://github.com/fullstorydev/grpcui) and running it with:
 ```
 make ui
 ```

@@ -25,3 +25,11 @@ run-container:
 
 test:
 	cargo test
+
+setup-env-linux:
+	sudo apt install -y protobuf-compiler libssl-dev pkg-config
+	cargo install sqlx-cli --version=0.8.0 sqlx-cli --no-default-features --features sqlite
+
+setup-env-macos:
+	brew install protobuf-compiler
+	cargo install sqlx-cli --version=0.8.0 sqlx-cli --no-default-features --features sqlite
