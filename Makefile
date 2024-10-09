@@ -1,5 +1,5 @@
 run:
-	cargo run
+	docker compose up --build
 
 ui:
 	grpcui -insecure localhost:10000
@@ -21,7 +21,7 @@ build-image:
 	docker build . -t cts
 
 run-container:
-	docker run -p 10000:10000 --env-file .env --name cts esiebert/ct
+	docker run -p 10000:10000 --env-file .env --name cts cts:latest
 
 test:
 	cargo test

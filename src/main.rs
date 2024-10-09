@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting gRPC server");
 
     let app = App::builder()
-        .setup_redis("redis://127.0.0.1/")?
+        .setup_redis("redis://cts-redis:6379/")?
         .setup_database("sqlite:ct.db")
         .await?
         .setup_grpc("[::0]:10000", true)

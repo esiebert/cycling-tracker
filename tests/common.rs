@@ -1,7 +1,7 @@
 use std::{pin::Pin, vec::IntoIter};
 use testcontainers_modules::{
     redis::{Redis, REDIS_PORT},
-    testcontainers::runners::AsyncRunner,
+    testcontainers::{runners::AsyncRunner, ContainerAsync},
 };
 
 use redis::Commands;
@@ -17,13 +17,16 @@ use cycling_tracker::App;
 pub struct TestEnvironment {
     pub ct_service: CyclingTrackerClient<Channel>,
     pub auth_service: SessionAuthClient<Channel>,
+    pub redis_container: ContainerAsync<Redis>,
 }
 
 pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
-    let redis_instance = Redis::default().start().await.unwrap();
-    let host_ip = redis_instance.get_host().await.unwrap();
-    let host_port = redis_instance.get_host_port_ipv4(REDIS_PORT).await.unwrap();
-
+    let redis_container = Redis::default().start().await.unwrap();
+    let host_ip = redis_container.get_host().await.unwrap();
+    let host_port = redis_container
+        .get_host_port_ipv4(REDIS_PORT)
+        .await
+        .unwrap();
     let url = format!("redis://{host_ip}:{host_port}");
 
     let redis_client =
@@ -31,7 +34,7 @@ pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
     let mut conn = redis_client
         .clone()
         .get_connection()
-        .expect("Failed to connect to redis");
+        .expect("Failed to connect to redis while setting up test env");
 
     // Add always-valid session-token
     conn.set::<_, _, ()>("session-token", "user1").unwrap();
@@ -69,6 +72,7 @@ pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
     TestEnvironment {
         ct_service,
         auth_service,
+        redis_container,
     }
 }
 

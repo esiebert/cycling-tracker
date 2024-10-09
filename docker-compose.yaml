@@ -1,14 +1,17 @@
 services:
   cts:
-    # postgres version should match with the aurora version in AWS.
     image: cts:latest
     container_name: cts
+    build:
+      dockerfile: ./Dockerfile
     ports:
       - "10000:10000"
     env_file:
       - .env
     networks:
       - cts-network
+    links:
+      - cts-redis
     depends_on:
       cts-redis:
         condition: service_healthy

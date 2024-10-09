@@ -1,4 +1,4 @@
-use redis::{Commands, ExistenceCheck, SetExpiry, SetOptions};
+use redis::Commands;
 
 #[derive(Clone)]
 pub struct RedisHandler {
@@ -12,20 +12,16 @@ impl RedisHandler {
             .get_connection()
             .expect("Failed to open connection with redis");
 
-        if expiry.is_some() {
-            let opts = SetOptions::default()
-                .conditional_set(ExistenceCheck::NX)
-                .get(true)
-                .with_expiration(SetExpiry::EX(expiry.unwrap()));
-            con.set_options::<String, String, ()>(
+        if let Some(expiry) = expiry {
+            con.set_ex::<String, String, ()>(
                 key.to_string(),
                 value.to_string(),
-                opts,
+                expiry,
             )
-            .unwrap();
+            .expect("Failed to set Redis key");
         } else {
             con.set::<String, String, ()>(key.to_string(), value.to_string())
-                .unwrap();
+                .expect("Failed to set Redis key");
         }
     }
 
