@@ -24,8 +24,4 @@ run-container:
 	docker run -p 10000:10000 --env-file .env --name cts esiebert/ct
 
 test:
-	# Redis has to be started manually because setting up tests with
-	# testcontainers didn't work
-	docker compose up -d cts-redis
-	-cargo test
-	docker compose down cts-redis
+	cargo test

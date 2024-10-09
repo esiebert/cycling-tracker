@@ -1,4 +1,8 @@
 use std::{pin::Pin, vec::IntoIter};
+use testcontainers_modules::{
+    redis::{Redis, REDIS_PORT},
+    testcontainers::runners::AsyncRunner,
+};
 
 use redis::Commands;
 use sqlx::SqlitePool;
@@ -16,8 +20,14 @@ pub struct TestEnvironment {
 }
 
 pub async fn run_test_env(db: SqlitePool) -> TestEnvironment {
-    let redis_client = redis::Client::open("redis://127.0.0.1/")
-        .expect("Failed to start redis client");
+    let redis_instance = Redis::default().start().await.unwrap();
+    let host_ip = redis_instance.get_host().await.unwrap();
+    let host_port = redis_instance.get_host_port_ipv4(REDIS_PORT).await.unwrap();
+
+    let url = format!("redis://{host_ip}:{host_port}");
+
+    let redis_client =
+        redis::Client::open(url.as_ref()).expect("Failed to start redis client");
     let mut conn = redis_client
         .clone()
         .get_connection()
